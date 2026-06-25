@@ -1,380 +1,195 @@
-/**
- * ==============================================================
- * 主播女孩重度依赖 - 最强底层架构 (Pro-Level Game Engine)
- * ==============================================================
- * 采用 Proxy 实现数据响应式，采用异步队列处理 JINE 消息与事件触发
- */
-
-class NeedyEngine {
-    constructor() {
-        // 1. 响应式状态管理 (Proxy)
-        // 只要数值发生变化，自动触发 UI 更新和结局检定，绝对不会出现数据不同步
-        this.state = new Proxy({
-            day: 1,
-            time: 'day', // 'day' | 'dusk' | 'night'
-            stats: { stress: 10, affection: 50, darkness: 20, fans: 0 },
-            isGameOver: false,
-            currentEvent: null
-        }, {
-            set: (target, property, value) => {
-                target[property] = value;
-                this.onStateChange(property, value);
-                return true;
-            }
-        });
-
-        this.statsProxy = new Proxy(this.state.stats, {
-            set: (target, property, value) => {
-                // 严格的数值边界钳制
-                const max = property === 'fans' ? Infinity : (property === 'stress' ? 120 : 100);
-                target[property] = Math.max(0, Math.min(value, max));
-                this.updateUI();
-                this.checkGlobalEvents();
-                return true;
-            }
-        });
-
-        // 2. 剧情/事件总线
-        this.eventDatabase = this.loadEvents();
-        
-        // 3. 消息队列机制
-        this.messageQueue = [];
-        this.isProcessingMessages = false;
-    }
-
-    // --- 核心驱动机制 ---
-
-    onStateChange(prop, val) {
-        if (prop === 'isGameOver' && val === true) {
-            this.triggerSystemCrash();
-        }
-    }
-
-    updateUI() {
-        // 在这里对接你的 HTML DOM 更新
-        console.log(`[UI更新] 压力: ${this.statsProxy.stress} | 阴暗: ${this.statsProxy.darkness} | 粉丝: ${this.statsProxy.fans}`);
-        // document.getElementById('stress-bar').value = this.statsProxy.stress;
-    }
-
-    // --- 事件与检定系统 ---
-
-    checkGlobalEvents() {
-        if (this.state.isGameOver) return;
-
-        // 优先级最高的结局检定
-        if (this.statsProxy.stress >= 100) {
-            this.triggerEnding("STRESS_BREAKDOWN");
-            return;
-        }
-        if (this.statsProxy.darkness >= 100) {
-            this.triggerEnding("DARKNESS_CONSUMED");
-            return;
-        }
-
-        // 特殊里程碑检定 (例如粉丝破万)
-        if (this.statsProxy.fans >= 10000 && !this.state.milestone10k) {
-            this.state.milestone10k = true;
-            this.queueJineMessage("阿P！！！我们粉丝破万了！！！", "ame", 1000);
-            this.queueJineMessage("我要飞上天了！", "ame", 500);
-        }
-    }
-
-    triggerEnding(endingCode) {
-        this.state.isGameOver = true;
-        this.messageQueue = []; // 清空之前的消息队列
-        
-        if (endingCode === "STRESS_BREAKDOWN") {
-            this.queueJineMessage("阿P，我的头要裂开了。", "ame", 1000);
-            this.queueJineMessage("一切都毁了。", "ame", 2000);
-            this.queueJineMessage("【系统提示】糖糖切断了网络连接。", "system", 3000);
-        }
-    }
-
-    // --- 高级 JINE 消息队列 (支持打字机延迟与排队) ---
-
-    queueJineMessage(text, sender, delayMs = 1000) {
-        this.messageQueue.push({ text, sender, delayMs });
-        if (!this.isProcessingMessages) {
-            this.processMessageQueue();
-        }
-    }
-
-    async processMessageQueue() {
-        this.isProcessingMessages = true;
-        
-        while (this.messageQueue.length > 0) {
-            const msg = this.messageQueue.shift();
-            
-            // 模拟“正在输入...”
-            if (msg.sender === 'ame') {
-                console.log("糖糖 正在输入...");
-                // document.getElementById('typing-indicator').style.display = 'block';
-            }
-
-            // 等待指定的延迟
-            await new Promise(resolve => setTimeout(resolve, msg.delayMs));
-
-            // document.getElementById('typing-indicator').style.display = 'none';
-            console.log(`[JINE] ${msg.sender === 'ame' ? '🎀 糖糖' : '⚙️ 系统'}: ${msg.text}`);
-            // 在这里将气泡推入 DOM
-        }
-        
-        this.isProcessingMessages = false;
-    }
-
-    // --- 玩家行动接口 ---
-
-    executeAction(actionType) {
-        if (this.state.isGameOver) return;
-
-        console.log(`>>> 执行动作: ${actionType} <<<`);
-        
-        // 使用 Proxy，直接修改数值即可自动触发各种联动
-        switch(actionType) {
-            case 'stream':
-                this.statsProxy.stress += 20;
-                this.statsProxy.fans += Math.floor(Math.random() * 500) + 100;
-                this.queueJineMessage("直播好累...", "ame", 1500);
-                break;
-            case 'play':
-                this.statsProxy.stress -= 15;
-                this.statsProxy.affection += 10;
-                this.queueJineMessage("跟你打游戏最开心了！", "ame", 1000);
-                break;
-        }
-        
-        // 时间推进逻辑可在此添加
-    }
-
-    triggerSystemCrash() {
-        console.warn("CRITICAL ERROR: GAME OVER");
-        // 触发 HTML 层的故障滤镜 (Glitch CSS)
-    }
-
-    loadEvents() {
-        // 现实中，这里会通过 fetch('events.json') 读取几十万字的剧本配置表
-        return {
-            "day_1": { text: "第一天开始了", conditions: {} }
-        };
-    }
-}
-
-// 实例化引擎
-const game = new NeedyEngine();
-
-// 测试流程
-setTimeout(() => game.executeAction('play'), 1000);
-setTimeout(() => game.executeAction('stream'), 4000);
-// 连续直播导致压力过载触发结局
-setTimeout(() => {
-    game.executeAction('stream');
-    game.executeAction('stream');
-    game.executeAction('stream');
-    game.executeAction('stream');
-    game.executeAction('stream'); 
-}, 8000);
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Needy Streamer Overload - OS Web Edition</title>
+    <title>主播女孩重度依赖 - 完美融合版</title>
     <link rel="stylesheet" href="https://unpkg.com/98.css" />
     <style>
         @import url('https://fonts.googleapis.com/css2?family=DotGothic16&display=swap');
-
-        /* =========================================
-           OS 核心层与动态背景
-           ========================================= */
-        body, html {
-            margin: 0; padding: 0; width: 100vw; height: 100vh; overflow: hidden;
-            font-family: 'DotGothic16', 'SimSun', monospace; background-color: #ffb8c6;
-            user-select: none;
-        }
-
-        /* 动态无限滚动粉色网格 */
-        .desktop-bg {
-            position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: -1;
-            background-image: 
-                linear-gradient(rgba(255,255,255,0.4) 2px, transparent 2px),
-                linear-gradient(90deg, rgba(255,255,255,0.4) 2px, transparent 2px);
-            background-size: 30px 30px;
-            animation: scrollGrid 10s linear infinite;
-        }
-        @keyframes scrollGrid { 0% { background-position: 0px 0px; } 100% { background-position: 30px 30px; } }
-
-        /* CRT 扫描线与闪烁 */
-        .crt-overlay {
-            position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; z-index: 9998; pointer-events: none;
-            background: linear-gradient(rgba(18,16,16,0) 50%, rgba(0,0,0,0.1) 50%); background-size: 100% 3px;
-        }
-
-        /* 故障滤镜 (高压状态) */
-        .glitch-active { animation: rgb-shift 0.15s infinite alternate; filter: contrast(150%) saturate(150%); }
-        @keyframes rgb-shift {
-            0% { transform: translate(2px, 1px); text-shadow: -2px 0 #ff00c8, 2px 0 #00ffff; }
-            100% { transform: translate(-2px, -1px); text-shadow: 2px 0 #ff00c8, -2px 0 #00ffff; }
-        }
-
-        /* =========================================
-           桌面图标系统
-           ========================================= */
-        .icon-grid { display: flex; flex-direction: column; gap: 20px; padding: 20px; position: absolute; z-index: 1; }
-        .desktop-icon { width: 70px; display: flex; flex-direction: column; align-items: center; text-align: center; color: white; cursor: pointer; text-shadow: 1px 1px 2px #000; }
-        .desktop-icon img { width: 48px; height: 48px; background: rgba(255,255,255,0.8); border: outset 2px #fff; margin-bottom: 5px; font-size: 36px; line-height: 48px; }
-        .desktop-icon.selected img { filter: invert(100%); border: dotted 2px #000; }
-        .desktop-icon.selected span { background: #000080; color: white; text-shadow: none; padding: 0 4px; }
-
-        /* =========================================
-           视窗系统极致还原
-           ========================================= */
-        .window { position: absolute; display: none; box-shadow: 2px 2px 0px #000, 4px 4px 15px rgba(0,0,0,0.4); }
-        .title-bar { cursor: grab; background: linear-gradient(90deg, #ff6b81, #ff4757); padding: 4px; }
-        .title-bar:active { cursor: grabbing; }
-        .window-body { margin: 4px; display: flex; flex-direction: column; background: #c0c0c0; border: inset 2px #fff; }
-
-        /* 1. JINE */
-        #win-jine { width: 360px; height: 650px; left: 40px; top: 40px; }
-        .jine-container { background: #82ccdd; flex-grow: 1; display: flex; flex-direction: column; overflow: hidden; position: relative;}
-        .jine-header { background: rgba(255,255,255,0.5); padding: 8px; font-weight: bold; border-bottom: solid 2px #60a3bc; display: flex; justify-content: space-between;}
-        .jine-chat { flex-grow: 1; overflow-y: auto; padding: 15px; display: flex; flex-direction: column; gap: 15px; }
-        .jine-msg-row { display: flex; align-items: flex-start; gap: 10px; animation: slideIn 0.3s cubic-bezier(0.25, 0.8, 0.25, 1); }
-        .jine-msg-row.player { flex-direction: row-reverse; }
-        .jine-avatar { width: 40px; height: 40px; background: #fff; border-radius: 50%; border: 2px solid #2f3640; display: flex; align-items: center; justify-content: center; font-size: 24px; flex-shrink: 0; box-shadow: 1px 1px 0 #000;}
-        .jine-bubble-wrap { display: flex; flex-direction: column; max-width: 65%; }
-        .player .jine-bubble-wrap { align-items: flex-end; }
-        .jine-bubble { padding: 8px 12px; border-radius: 12px; font-size: 14px; line-height: 1.4; background: #fff; border: 2px solid #2f3640; box-shadow: 2px 2px 0px #2f3640; position: relative; word-wrap: break-word;}
-        .player .jine-bubble { background: #78e08f; }
-        .jine-meta { font-size: 10px; color: #555; margin-top: 4px; display: flex; gap: 5px; }
-        @keyframes slideIn { from { opacity: 0; transform: translateY(15px); } to { opacity: 1; transform: translateY(0); } }
-
-        /* 2. Task Manager */
-        #win-stats { width: 320px; left: 850px; top: 40px; }
-        .stat-banner { background: #000; color: #00ff00; padding: 10px; text-align: center; font-size: 18px; font-family: 'Courier New', monospace; border: inset 2px #fff; margin-bottom: 10px; }
-        .fan-count { font-size: 32px; color: #0984e3; text-align: center; font-weight: bold; text-shadow: 1px 1px 0 #fff; margin: 10px 0;}
-        .progress-box { margin-bottom: 8px; }
-        .progress-label { display: flex; justify-content: space-between; font-size: 12px; font-weight: bold; margin-bottom: 2px; }
-        .progress-track { width: 100%; height: 18px; border: inset 2px #fff; background: #2d3436; position: relative; }
-        .progress-fill { height: 100%; transition: width 0.4s ease-out, background-color 0.3s; }
-        .limit-line { position: absolute; left: 80%; top: 0; width: 2px; height: 100%; background: red; z-index: 2; } /* 80% 警戒线 */
-
-        /* 3. Webcam */
-        #win-cam { width: 400px; height: 350px; left: 420px; top: 40px; }
-        .cam-feed { background: #1e272e; flex-grow: 1; border: inset 2px #fff; position: relative; display: flex; align-items: center; justify-content: center; overflow: hidden;}
-        .cam-rec { position: absolute; top: 10px; left: 10px; color: #ff4757; font-weight: bold; font-size: 16px; text-shadow: 0 0 5px red; animation: blink 1s infinite; display: none; }
-        .cam-sprite { font-size: 140px; transition: all 0.3s; user-select: none; filter: drop-shadow(0px 0px 10px rgba(255,255,255,0.3)); }
-        .cam-sprite.streaming { font-size: 180px; animation: float 2s infinite ease-in-out; filter: drop-shadow(0px 0px 20px #ff9eb1); }
-
-        /* 4. Actions */
-        #win-actions { width: 400px; left: 420px; top: 410px; }
-        .action-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; padding: 5px; }
-        .btn-action { height: 80px; display: flex; flex-direction: column; align-items: center; justify-content: center; font-size: 13px; font-weight: bold; font-family: 'DotGothic16'; border: outset 2px #fff; background: #dfe6e9; cursor: pointer; transition: all 0.1s;}
-        .btn-action:active:not([disabled]) { border: inset 2px #fff; background: #b2bec3; transform: scale(0.98); }
-        .btn-action[disabled] { filter: grayscale(100%); opacity: 0.5; cursor: not-allowed; }
-        .btn-icon { font-size: 32px; margin-bottom: 5px; }
-
-        /* =========================================
-           OS 过场与覆盖层
-           ========================================= */
-        #bios-boot { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: #000; color: #ccc; font-family: monospace; z-index: 10000; padding: 20px; font-size: 16px; box-sizing: border-box; }
-        #day-transition { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: #000; color: #fff; z-index: 9999; display: flex; align-items: center; justify-content: center; font-size: 48px; font-weight: bold; letter-spacing: 5px; opacity: 0; pointer-events: none; transition: opacity 1s; }
+        body, html { margin: 0; padding: 0; width: 100vw; height: 100vh; overflow: hidden; font-family: 'DotGothic16', 'SimSun', monospace; background: repeating-linear-gradient(-45deg, #ffb8c6, #ffb8c6 20px, #ff9eb1 20px, #ff9eb1 40px); user-select: none; }
+        .crt::before { content: " "; display: block; position: absolute; top: 0; left: 0; bottom: 0; right: 0; background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.15) 50%); background-size: 100% 3px; z-index: 9998; pointer-events: none; }
+        .window { position: absolute; box-shadow: 3px 3px 15px rgba(0,0,0,0.4); display: flex; flex-direction: column; }
+        .title-bar { cursor: grab; background: linear-gradient(90deg, #000080, #1084d0); }
+        .window-body { flex-grow: 1; margin: 6px; display: flex; flex-direction: column; overflow: hidden; background: #c0c0c0;}
         
-        #taskbar { position: absolute; bottom: 0; width: 100%; height: 35px; background: #c0c0c0; border-top: 2px solid #fff; display: flex; align-items: center; justify-content: space-between; padding: 0 4px; box-sizing: border-box; z-index: 9990; }
+        #win-jine { width: 340px; height: 500px; left: 30px; top: 30px; }
+        .jine-bg { background: #82ccdd; flex-grow: 1; border: inset 2px; display: flex; flex-direction: column; overflow: hidden; }
+        .jine-header { background: #60a3bc; padding: 5px; color: white; text-align: center; font-weight: bold; border-bottom: solid 2px #3c6382; }
+        .jine-chat { flex-grow: 1; overflow-y: auto; padding: 15px 10px; display: flex; flex-direction: column; gap: 12px; }
+        .msg-wrap { display: flex; align-items: flex-start; gap: 8px; width: 100%; }
+        .msg-wrap.player { flex-direction: row-reverse; }
+        .msg-avatar { width: 36px; height: 36px; background: #fff; border-radius: 50%; border: 2px solid #2f3640; display: flex; align-items: center; justify-content: center; font-size: 20px; flex-shrink: 0;}
+        .msg-bubble { max-width: 65%; padding: 8px 12px; border-radius: 15px; font-size: 14px; line-height: 1.5; background: #fff; border: 2px solid #2f3640; word-wrap: break-word;}
+        .player .msg-bubble { background: #78e08f; }
+
+        #win-stats { width: 300px; left: 400px; top: 30px; }
+        .stat-panel { background: #fff; border: inset 2px; padding: 10px; }
+        .stat-row { display: flex; justify-content: space-between; font-size: 13px; margin: 8px 0 2px 0; font-weight: bold;}
+        .stat-bar-bg { width: 100%; border: inset 2px; height: 16px; background: #e0e0e0; }
+        .stat-bar-fill { height: 100%; transition: width 0.3s; }
+
+        #win-actions { width: 300px; left: 400px; top: 300px; }
+        .action-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 6px; padding: 4px; }
+        .action-btn { height: 50px; cursor: pointer; border: outset 2px; background: #dfdfdf; font-weight: bold;}
+        .action-btn:active { border: inset 2px; }
     </style>
 </head>
-<body>
-
-<div class="desktop-bg"></div>
-<div class="crt-overlay"></div>
-
-<div id="bios-boot">
-    <div>WIND0WS 95 Memory Test: 640K OK</div>
-    <div id="bios-log"></div>
-    <div class="blink" id="bios-cursor">_</div>
-</div>
-
-<div id="day-transition">DAY <span id="trans-day">1</span></div>
-
-<div class="icon-grid">
-    <div class="desktop-icon" onclick="App.openWindow('win-jine', this)">
-        <div style="background:none; border:none; font-size:48px;">💬</div><span>JINE</span>
-    </div>
-    <div class="desktop-icon" onclick="App.openWindow('win-cam', this)">
-        <div style="background:none; border:none; font-size:48px;">📹</div><span>OBS.exe</span>
-    </div>
-</div>
+<body class="crt">
 
 <div class="window" id="win-jine">
-    <div class="title-bar"><div class="title-bar-text">JINE</div></div>
+    <div class="title-bar"><div class="title-bar-text">💬 JINE</div></div>
     <div class="window-body">
-        <div class="jine-container">
-            <div class="jine-header"><span>🎀 糖糖</span><span id="jine-typing" style="color:#e84118; display:none;">正在输入...</span></div>
-            <div class="jine-chat" id="jine-box"></div>
+        <div class="jine-bg">
+            <div class="jine-header">🎀 糖糖 🎀</div>
+            <div class="jine-chat" id="jine-history"></div>
         </div>
     </div>
 </div>
 
 <div class="window" id="win-stats">
-    <div class="title-bar"><div class="title-bar-text">任务管理器</div></div>
-    <div class="window-body" style="padding: 10px;">
-        <div class="stat-banner" id="ui-time">DAY 1 - 🌞 昼</div>
-        <div style="text-align: center; font-weight: bold;">Followers</div>
-        <div class="fan-count" id="ui-fans">0</div>
-        
-        <div class="progress-box">
-            <div class="progress-label"><span>压力 Stress</span><span id="ui-stress-val">10</span></div>
-            <div class="progress-track"><div class="limit-line"></div><div class="progress-fill" id="ui-stress" style="background: #00b894; width: 10%;"></div></div>
-        </div>
-        <div class="progress-box">
-            <div class="progress-label"><span>好感 Affection</span><span id="ui-aff-val">50</span></div>
-            <div class="progress-track"><div class="progress-fill" id="ui-aff" style="background: #fd79a8; width: 50%;"></div></div>
-        </div>
-        <div class="progress-box">
-            <div class="progress-label"><span>阴暗 Darkness</span><span id="ui-dark-val">20</span></div>
-            <div class="progress-track"><div class="progress-fill" id="ui-dark" style="background: #6c5ce7; width: 20%;"></div></div>
-        </div>
-    </div>
-</div>
-
-<div class="window" id="win-cam">
-    <div class="title-bar"><div class="title-bar-text">WebCam</div></div>
+    <div class="title-bar"><div class="title-bar-text">📊 Taskmgr.exe</div></div>
     <div class="window-body">
-        <div class="cam-feed" id="cam-bg">
-            <div class="cam-rec" id="cam-rec">● REC</div>
-            <div class="cam-sprite" id="sprite-ame">👧🏻</div>
+        <div class="stat-panel">
+            <div style="text-align: center; font-size: 20px; font-weight: bold;" id="ui-day">DAY 1</div>
+            <div style="text-align: center; color: #0984e3; font-size: 24px; font-weight: bold;" id="ui-fans">0 粉丝</div>
+            
+            <div class="stat-row"><span>压力</span><span id="ui-stress-val">10/120</span></div>
+            <div class="stat-bar-bg"><div class="stat-bar-fill" id="ui-stress-bar" style="background: #e17055; width: 8%;"></div></div>
+            
+            <div class="stat-row"><span>好感</span><span id="ui-aff-val">50/100</span></div>
+            <div class="stat-bar-bg"><div class="stat-bar-fill" id="ui-aff-bar" style="background: #fd79a8; width: 50%;"></div></div>
         </div>
     </div>
 </div>
 
 <div class="window" id="win-actions">
-    <div class="title-bar"><div class="title-bar-text">Actions.exe</div></div>
-    <div class="window-body">
+    <div class="title-bar"><div class="title-bar-text">⚙️ Actions</div></div>
+    <div class="window-body" style="background: #fff; border: inset 2px;">
         <div class="action-grid">
-            <button class="btn-action" onclick="Game.doAction('internet')"><div class="btn-icon">🌐</div>网上冲浪</button>
-            <button class="btn-action" onclick="Game.doAction('play')"><div class="btn-icon">🎮</div>打游戏</button>
-            <button class="btn-action" onclick="Game.doAction('meds')"><div class="btn-icon">💊</div>吃药</button>
-            <button class="btn-action" onclick="Game.doAction('out')"><div class="btn-icon">🏥</div>出门散心</button>
-            <button class="btn-action" onclick="Game.doAction('sleep')"><div class="btn-icon">🛏️</div>睡觉到明天</button>
-            <button class="btn-action" id="btn-stream" onclick="Game.doAction('stream')" disabled style="background:#ff7675; color:white; border-color:#d63031;"><div class="btn-icon">📺</div>开始直播</button>
+            <button class="action-btn" onclick="game.executeAction('play')">🎮 打游戏</button>
+            <button class="action-btn" onclick="game.executeAction('internet')">🌐 上网</button>
+            <button class="action-btn" onclick="game.executeAction('sleep')">🛏️ 睡觉</button>
+            <button class="action-btn" onclick="game.executeAction('stream')" style="background: #fab1a0;">📺 直播</button>
         </div>
     </div>
 </div>
 
-<div id="taskbar">
-    <button style="font-weight:bold; font-family:'SimSun';">⊞ 开始</button>
-    <div style="border:inset 2px #fff; padding: 2px 8px; font-size: 12px; background:#c0c0c0;" id="sys-time">00:00</div>
-</div>
-
 <script>
-/**
- * ==========================================
- * ULTIMATE ENGINE - AUDIO, STATE, OS
- * ==========================================
- */
+class NeedyEngine {
+    constructor() {
+        // 核心数据模型与 Proxy 代理拦截
+        this.state = new Proxy({
+            day: 1,
+            stats: { stress: 10, affection: 50, darkness: 20, fans: 0 },
+            isGameOver: false
+        }, {
+            set: (target, prop, value) => { target[prop] = value; return true; }
+        });
 
-// 1. Web Audio API 音效引擎 (纯代码合成音效)
-const AudioEngine = {
-    ctx: new (window.AudioContext || window.webkitAudioContext)(),
-    playTone: function(freq, type, duration, vol=0.1) {
-        if(this.ctx.state === 'suspended') this.ctx.resume();
-        const osc = this
+        this.statsProxy = new Proxy(this.state.stats, {
+            set: (target, prop, value) => {
+                const max = prop === 'fans' ? Infinity : (prop === 'stress' ? 120 : 100);
+                target[prop] = Math.max(0, Math.min(value, max));
+                this.updateUI(); // 数值改变，自动刷新UI
+                this.checkEvents();
+                return true;
+            }
+        });
+
+        this.messageQueue = [];
+        this.isProcessing = false;
+        
+        // 初始化绑定 UI 并拖拽
+        this.updateUI();
+        this.makeDraggable();
+        this.queueMsg("阿P，游戏引擎重启成功啦！", "ame");
+    }
+
+    updateUI() {
+        document.getElementById('ui-day').innerText = `DAY ${this.state.day}`;
+        document.getElementById('ui-fans').innerText = `${this.statsProxy.fans.toLocaleString()} 粉丝`;
+        document.getElementById('ui-stress-val').innerText = `${this.statsProxy.stress}/120`;
+        document.getElementById('ui-stress-bar').style.width = `${(this.statsProxy.stress / 120) * 100}%`;
+        document.getElementById('ui-aff-val').innerText = `${this.statsProxy.affection}/100`;
+        document.getElementById('ui-aff-bar').style.width = `${this.statsProxy.affection}%`;
+    }
+
+    checkEvents() {
+        if (this.state.isGameOver) return;
+        if (this.statsProxy.stress >= 120) {
+            this.state.isGameOver = true;
+            this.queueMsg("头好痛...受不了了...", "ame", 500);
+            setTimeout(() => alert("【结局】压力过载，游戏结束！"), 2000);
+        }
+    }
+
+    executeAction(action) {
+        if (this.state.isGameOver) return;
+        switch(action) {
+            case 'play':
+                this.statsProxy.stress -= 15; this.statsProxy.affection += 10;
+                this.queueMsg("打游戏最开心了！", "ame");
+                break;
+            case 'internet':
+                this.statsProxy.stress -= 5;
+                this.queueMsg("在网上找了找素材。", "ame");
+                break;
+            case 'sleep':
+                this.statsProxy.stress -= 30; this.state.day++;
+                this.queueMsg("睡得好饱，阿P早安！", "ame");
+                this.updateUI();
+                break;
+            case 'stream':
+                const fansGained = Math.floor(Math.random() * 500) + 100 * this.state.day;
+                this.statsProxy.stress += 25; this.statsProxy.fans += fansGained;
+                this.queueMsg(`开播啦！涨了 ${fansGained} 粉。`, "ame");
+                this.queueMsg("直播好累，想吐...", "ame", 1000);
+                break;
+        }
+    }
+
+    queueMsg(text, sender, delay = 800) {
+        this.messageQueue.push({ text, sender, delay });
+        if (!this.isProcessing) this.processQueue();
+    }
+
+    async processQueue() {
+        this.isProcessing = true;
+        const box = document.getElementById('jine-history');
+        while (this.messageQueue.length > 0) {
+            const msg = this.messageQueue.shift();
+            await new Promise(r => setTimeout(r, msg.delay));
+            
+            const div = document.createElement('div');
+            div.className = `msg-wrap ${msg.sender === 'p' ? 'player' : ''}`;
+            div.innerHTML = `<div class="msg-avatar">${msg.sender === 'p' ? 'P' : '🎀'}</div><div class="msg-bubble">${msg.text}</div>`;
+            box.appendChild(div);
+            box.scrollTo({ top: box.scrollHeight, behavior: 'smooth' });
+        }
+        this.isProcessing = false;
+    }
+
+    makeDraggable() {
+        document.querySelectorAll('.window').forEach(win => {
+            const title = win.querySelector('.title-bar');
+            let isDown = false, startX, startY, winX, winY;
+            title.addEventListener('mousedown', e => {
+                isDown = true; startX = e.clientX; startY = e.clientY;
+                winX = win.offsetLeft; winY = win.offsetTop;
+            });
+            document.addEventListener('mousemove', e => {
+                if (!isDown) return;
+                win.style.left = (winX + e.clientX - startX) + 'px';
+                win.style.top = (winY + e.clientY - startY) + 'px';
+            });
+            document.addEventListener('mouseup', () => isDown = false);
+        });
+    }
+}
+
+// 启动游戏
+const game = new NeedyEngine();
+</script>
+</body>
+</html>
