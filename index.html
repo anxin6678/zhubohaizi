@@ -3,333 +3,366 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>主播女孩重度依赖 - 1:1 H5复刻引擎</title>
+    <title>主播女孩重度依赖 - 稳当还原版</title>
+    <!-- 引入复古 Win98 样式 -->
     <link rel="stylesheet" href="https://unpkg.com/98.css" />
     <style>
         @import url('https://fonts.googleapis.com/css2?family=DotGothic16&display=swap');
         
-        /* 1:1 还原经典粉色网格桌面 */
-        body, html { margin: 0; padding: 0; width: 100vw; height: 100vh; overflow: hidden; font-family: 'DotGothic16', 'SimSun', monospace; background: repeating-linear-gradient(-45deg, #ffb8c6, #ffb8c6 20px, #ff9eb1 20px, #ff9eb1 40px); user-select: none; }
+        /* 经典粉色网格桌面与 CRT 扫描线 */
+        body { margin: 0; height: 100vh; overflow: hidden; font-family: 'DotGothic16', monospace; background: #ffb8c6; background-image: linear-gradient(rgba(255,255,255,0.3) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.3) 1px, transparent 1px); background-size: 20px 20px; user-select: none; }
+        .crt::after { content: ""; position: absolute; top: 0; left: 0; width: 100vw; height: 100vh; background: linear-gradient(rgba(18,16,16,0) 50%, rgba(0,0,0,0.1) 50%); background-size: 100% 4px; pointer-events: none; z-index: 9999; }
         
-        /* 1:1 还原 CRT 屏幕扫描线特效 */
-        .crt::before { content: " "; display: block; position: absolute; top: 0; left: 0; bottom: 0; right: 0; background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.1) 50%); background-size: 100% 3px; z-index: 9998; pointer-events: none; }
-        
-        /* 开机引导层 (用于激活网页音频权限) */
-        #boot-screen { position: absolute; top: 0; left: 0; width: 100vw; height: 100vh; background: black; color: white; z-index: 10000; display: flex; flex-direction: column; align-items: center; justify-content: center; cursor: pointer; transition: opacity 0.5s; }
-        .blinking-cursor::after { content: "_"; animation: blink 1s step-end infinite; }
+        /* 视窗系统基础架构 */
+        .window { position: absolute; box-shadow: 4px 4px 10px rgba(0,0,0,0.3); display: flex; flex-direction: column; background: #c0c0c0; border: 2px solid #dfdfdf; border-right-color: #000; border-bottom-color: #000; }
+        .title-bar { cursor: grab; background: linear-gradient(90deg, #000080, #1084d0); padding: 4px; }
+        .window-body { flex-grow: 1; margin: 4px; display: flex; flex-direction: column; overflow: hidden; }
+
+        /* 1. 摄像头与房间 (替代形象版) */
+        #win-cam { width: 300px; height: 280px; left: 370px; top: 30px; z-index: 2; }
+        .cam-bg { flex-grow: 1; background: #2f3640; border: inset 2px; display: flex; align-items: center; justify-content: center; position: relative; overflow: hidden; transition: background 0.5s; box-shadow: inset 0 0 20px #000;}
+        .avatar-sprite { font-size: 120px; filter: drop-shadow(2px 2px 0px rgba(255,255,255,0.5)); transition: transform 0.2s; }
+        .avatar-sprite:active { transform: scale(0.95); }
+        .rec-indicator { position: absolute; top: 10px; left: 10px; color: #ff4757; font-weight: bold; font-family: Arial; font-size: 14px; display: none; animation: blink 1s infinite; text-shadow: 0 0 5px red;}
         @keyframes blink { 50% { opacity: 0; } }
 
-        /* 视窗基础架构 */
-        .window { position: absolute; box-shadow: 3px 3px 15px rgba(0,0,0,0.4); display: flex; flex-direction: column; }
-        .title-bar { cursor: grab; background: linear-gradient(90deg, #000080, #1084d0); }
-        .window-body { flex-grow: 1; margin: 6px; display: flex; flex-direction: column; overflow: hidden; background: #c0c0c0;}
-        
-        /* --- UI 模块 --- */
-        /* 1. JINE 聊天系统 */
-        #win-jine { width: 340px; height: 500px; left: 30px; top: 30px; }
-        .jine-bg { background: #82ccdd; flex-grow: 1; border: inset 2px; display: flex; flex-direction: column; overflow: hidden; }
-        .jine-header { background: #60a3bc; padding: 5px; color: white; text-align: center; font-weight: bold; border-bottom: solid 2px #3c6382; }
-        .jine-chat { flex-grow: 1; overflow-y: auto; padding: 15px 10px; display: flex; flex-direction: column; gap: 12px; }
-        .msg-wrap { display: flex; align-items: flex-start; gap: 8px; width: 100%; animation: popIn 0.2s ease-out;}
-        .msg-wrap.player { flex-direction: row-reverse; }
-        /* 替换此处的纯色圆圈为真实头像以达到1:1 */
-        .msg-avatar { width: 36px; height: 36px; background: #fff; border-radius: 50%; border: 2px solid #2f3640; display: flex; align-items: center; justify-content: center; font-size: 20px; flex-shrink: 0;}
-        .msg-bubble { max-width: 65%; padding: 8px 12px; border-radius: 15px; font-size: 14px; line-height: 1.5; background: #fff; border: 2px solid #2f3640; word-wrap: break-word;}
-        .player .msg-bubble { background: #78e08f; }
-        @keyframes popIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        /* 2. JINE 模拟器 */
+        #win-jine { width: 330px; height: 550px; left: 20px; top: 20px; z-index: 10; }
+        .jine-bg { background: #82ccdd; flex-grow: 1; border: inset 2px; display: flex; flex-direction: column; }
+        .jine-header { background: #60a3bc; padding: 6px; color: white; text-align: center; font-weight: bold; border-bottom: 2px solid #3c6382; }
+        .jine-chat { flex-grow: 1; overflow-y: auto; padding: 12px; display: flex; flex-direction: column; gap: 10px; }
+        .msg { max-width: 75%; padding: 8px 12px; border-radius: 12px; font-size: 14px; line-height: 1.4; background: #fff; border: 2px solid #2f3640; word-wrap: break-word; position: relative; animation: pop 0.2s ease-out;}
+        .msg-ame { align-self: flex-start; border-bottom-left-radius: 2px; }
+        .msg-p { align-self: flex-end; background: #78e08f; border-bottom-right-radius: 2px; }
+        @keyframes pop { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
 
-        /* 2. 状态管理器 (Taskmgr) */
-        #win-stats { width: 280px; left: 400px; top: 30px; }
-        .stat-panel { background: #fff; border: inset 2px; padding: 10px; }
-        .stat-row { display: flex; justify-content: space-between; font-size: 13px; margin: 8px 0 2px 0; font-weight: bold;}
-        .stat-bar-bg { width: 100%; border: inset 2px; height: 16px; background: #e0e0e0; }
-        .stat-bar-fill { height: 100%; transition: width 0.3s; }
+        /* 3. Poketter 推文界面 */
+        #win-poketter { width: 330px; height: 400px; left: 700px; top: 30px; z-index: 5; }
+        .poketter-bg { height: 100%; background: #fff; overflow-y: auto; padding: 10px; border: inset 2px; display: flex; flex-direction: column; gap: 8px;}
+        .tweet { font-size: 13px; padding: 10px; border-radius: 6px; animation: pop 0.3s; }
+        .tweet-kso { background: #2d3436; color: #dfe6e9; border-left: 4px solid #b2bec3; }
+        .tweet-angel { background: #fffde7; color: #2d3436; border: 1px solid #ffeaa7; border-left: 4px solid #fdcb6e; }
+        .tweet-header { font-weight: bold; margin-bottom: 5px; font-size: 12px; }
 
-        /* 3. 摄像头/糖糖的房间 (Cam) */
-        #win-cam { width: 340px; height: 260px; left: 700px; top: 30px; }
-        .cam-bg { background: #2f3640; flex-grow: 1; border: inset 2px; display: flex; align-items: center; justify-content: center; position: relative; overflow: hidden; transition: background 0.5s;}
-        /* 替换此处的 emoji 为真实 Live2D 截图或 GIF 以达到1:1 */
-        .ame-sprite { font-size: 100px; transition: transform 0.3s; }
-        .rec-dot { position: absolute; top: 10px; left: 10px; color: red; font-weight: bold; font-size: 14px; display: none; animation: blink 1s infinite;}
+        /* 4. 任务管理器 (数值面板) */
+        #win-stats { width: 300px; left: 370px; top: 330px; z-index: 6; }
+        .stat-panel { background: #fff; padding: 12px; border: inset 2px; }
+        .time-banner { text-align: center; font-size: 18px; font-weight: bold; border-bottom: 2px dashed #b2bec3; padding-bottom: 8px; margin-bottom: 10px; color: #2d3436; }
+        .stat-row { display: flex; justify-content: space-between; font-size: 13px; font-weight: bold; margin-top: 8px; }
+        .progress-bg { height: 14px; background: #dfe6e9; border: inset 2px; margin-top: 2px; }
+        .progress-fill { height: 100%; transition: width 0.4s ease-out, background-color 0.3s; }
 
-        /* 4. 行动控制台 (Actions) */
-        #win-actions { width: 450px; left: 400px; top: 320px; }
+        /* 5. 行动控制台 */
+        #win-actions { width: 660px; left: 370px; top: 600px; z-index: 8; }
         .action-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; padding: 4px; }
-        .action-btn { height: 60px; cursor: pointer; border: outset 2px; background: #dfdfdf; font-weight: bold; display: flex; flex-direction: column; align-items: center; justify-content: center;}
-        .action-btn:active { border: inset 2px; }
-        .action-btn:disabled { color: #888; filter: grayscale(1); cursor: not-allowed; }
+        .btn-action { height: 55px; font-weight: bold; cursor: pointer; display: flex; flex-direction: column; align-items: center; justify-content: center; font-size: 12px; background: #dfdfdf; border: outset 2px;}
+        .btn-action:active:not(:disabled) { border: inset 2px; background: #c0c0c0;}
+        .btn-action:disabled { filter: grayscale(1); cursor: not-allowed; opacity: 0.6; }
+        .btn-icon { font-size: 20px; margin-bottom: 2px; }
 
-        /* 结局遮罩层 */
-        #ending-screen { display: none; position: absolute; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0,0,0,0.9); z-index: 20000; color: white; flex-direction: column; align-items: center; justify-content: center; font-size: 24px; text-align: center; padding: 20px;}
+        /* 屏蔽层与开机动画 */
+        #blocker { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 9998;}
+        #boot-screen { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: #000; color: #fff; z-index: 10000; display: flex; flex-direction: column; align-items: center; justify-content: center; cursor: pointer; transition: opacity 0.5s; }
+        .boot-text { font-family: 'Courier New', Courier, monospace; font-size: 24px; }
     </style>
 </head>
-<body class="crt">
+<body>
 
-<div id="boot-screen" onclick="Engine.bootUp()">
-    <h2 class="blinking-cursor">Windose OS Booting...</h2>
-    <p style="color: #aaa; margin-top: 20px;">[ 点击任意位置启动系统与音频模块 ]</p>
+<!-- 开机画面 -->
+<div id="boot-screen" onclick="Engine.boot()">
+    <div class="boot-text">Windose 95 Starting...</div>
+    <div style="color: #555; margin-top: 20px;">[ CLICK TO INITIALIZE SYSTEM & AUDIO ]</div>
 </div>
 
-<div id="ending-screen">
-    <h1 id="ending-title" style="color: red;">ENDING</h1>
-    <p id="ending-desc" style="font-size: 16px; color: #ccc;"></p>
-    <button onclick="location.reload()" style="margin-top: 30px; padding: 10px 20px;">REBOOT (重启游戏)</button>
-</div>
+<div class="crt"></div>
+<div id="blocker"></div>
 
-<div class="window" id="win-jine" style="display:none;">
-    <div class="title-bar"><div class="title-bar-text">💬 JINE.exe</div></div>
+<!-- 窗口：摄像头 -->
+<div class="window" id="win-cam">
+    <div class="title-bar"><div class="title-bar-text">📹 WebCam.exe</div></div>
     <div class="window-body">
-        <div class="jine-bg">
-            <div class="jine-header">🎀 糖糖 🎀</div>
-            <div class="jine-chat" id="jine-history"></div>
+        <div class="cam-bg" id="ui-cam-bg">
+            <div class="rec-indicator" id="ui-rec">● REC</div>
+            <div class="avatar-sprite" id="ui-avatar">🎀</div>
         </div>
     </div>
 </div>
 
-<div class="window" id="win-stats" style="display:none;">
+<!-- 窗口：状态 -->
+<div class="window" id="win-stats">
     <div class="title-bar"><div class="title-bar-text">📊 Taskmgr.exe</div></div>
     <div class="window-body">
         <div class="stat-panel">
-            <div style="text-align: center; font-size: 18px; font-weight: bold; border-bottom: 2px dashed #aaa; padding-bottom: 5px;" id="ui-time">DAY 1 - 🌅 昼</div>
-            <div style="text-align: center; color: #0984e3; font-size: 24px; font-weight: bold; margin-top: 10px;" id="ui-fans">0 粉丝</div>
-            
-            <div class="stat-row"><span>压力 (Stress)</span><span id="ui-stress-val">10/120</span></div>
-            <div class="stat-bar-bg"><div class="stat-bar-fill" id="ui-stress-bar" style="background: #e17055; width: 8%;"></div></div>
-            
-            <div class="stat-row"><span>好感 (Affection)</span><span id="ui-aff-val">50/100</span></div>
-            <div class="stat-bar-bg"><div class="stat-bar-fill" id="ui-aff-bar" style="background: #fd79a8; width: 50%;"></div></div>
-            
-            <div class="stat-row"><span>阴暗 (Darkness)</span><span id="ui-dark-val">20/100</span></div>
-            <div class="stat-bar-bg"><div class="stat-bar-fill" id="ui-dark-bar" style="background: #6c5ce7; width: 20%;"></div></div>
+            <div class="time-banner" id="ui-time">DAY 1 - 🌞 昼</div>
+            <div style="text-align: center; margin-bottom: 10px;">
+                <span style="font-size: 12px; color: #636e72;">Followers / 粉丝数</span><br>
+                <span style="font-size: 24px; color: #0984e3; font-weight: bold;" id="ui-fans">0</span>
+            </div>
+            <div class="stat-row"><span>压力 Stress</span><span id="txt-stress">10/120</span></div>
+            <div class="progress-bg"><div class="progress-fill" id="bar-stress" style="background: #ff7675; width: 8%;"></div></div>
+            <div class="stat-row"><span>好感 Affection</span><span id="txt-aff">50/100</span></div>
+            <div class="progress-bg"><div class="progress-fill" id="bar-aff" style="background: #fd79a8; width: 50%;"></div></div>
+            <div class="stat-row"><span>阴暗 Darkness</span><span id="txt-dark">20/100</span></div>
+            <div class="progress-bg"><div class="progress-fill" id="bar-dark" style="background: #6c5ce7; width: 20%;"></div></div>
         </div>
     </div>
 </div>
 
-<div class="window" id="win-cam" style="display:none;">
-    <div class="title-bar"><div class="title-bar-text">📹 WebCam_01</div></div>
+<!-- 窗口：JINE -->
+<div class="window" id="win-jine">
+    <div class="title-bar"><div class="title-bar-text">💬 JINE</div></div>
     <div class="window-body">
-        <div class="cam-bg" id="cam-bg">
-            <div class="rec-dot" id="rec-dot">● REC</div>
-            <div class="ame-sprite" id="ame-sprite">👧🏻</div>
+        <div class="jine-bg">
+            <div class="jine-header">🎀 糖糖</div>
+            <div class="jine-chat" id="ui-jine"></div>
+            <div style="padding: 5px; background: #c0c0c0; border-top: 2px solid #fff;">
+                <button style="width: 100%; font-weight: bold;" onclick="Engine.replyJine()">回复: 摸摸头</button>
+            </div>
         </div>
     </div>
 </div>
 
-<div class="window" id="win-actions" style="display:none;">
-    <div class="title-bar"><div class="title-bar-text">⚙️ Actions.exe</div></div>
+<!-- 窗口：Poketter -->
+<div class="window" id="win-poketter">
+    <div class="title-bar"><div class="title-bar-text">🐦 Poketter</div></div>
+    <div class="window-body">
+        <div class="poketter-bg" id="ui-poketter"></div>
+    </div>
+</div>
+
+<!-- 窗口：行动 -->
+<div class="window" id="win-actions">
+    <div class="title-bar"><div class="title-bar-text">⚙️ Actions</div></div>
     <div class="window-body" style="background: #fff; border: inset 2px;">
         <div class="action-grid">
-            <button class="action-btn" onclick="Engine.doAction('play')"><span>🎮</span>打游戏</button>
-            <button class="action-btn" onclick="Engine.doAction('internet')"><span>🌐</span>网上冲浪</button>
-            <button class="action-btn" onclick="Engine.doAction('meds')"><span>💊</span>吃药</button>
-            <button class="action-btn" onclick="Engine.doAction('out')"><span>🏥</span>出门散心</button>
-            <button class="action-btn" onclick="Engine.doAction('sleep')"><span>🛏️</span>睡觉到天亮</button>
-            <button class="action-btn" id="btn-stream" onclick="Engine.doAction('stream')" disabled style="background: #fab1a0;"><span>📺</span>开始直播 (仅夜晚)</button>
+            <button class="btn-action" onclick="Engine.doAction('play')"><span class="btn-icon">🎮</span>打游戏</button>
+            <button class="btn-action" onclick="Engine.doAction('internet')"><span class="btn-icon">🌐</span>网上冲浪</button>
+            <button class="btn-action" onclick="Engine.doAction('meds')"><span class="btn-icon">💊</span>吃魔法药</button>
+            <button class="btn-action" onclick="Engine.doAction('sleep')"><span class="btn-icon">🛏️</span>睡觉到明天</button>
+            <button class="btn-action" onclick="Engine.doAction('out')"><span class="btn-icon">🏥</span>出门散心</button>
+            <button class="btn-action" id="btn-stream" onclick="Engine.doAction('stream')" disabled style="background: #ffeaa7; color: #d63031;"><span class="btn-icon">📺</span>开始直播 (仅夜晚)</button>
         </div>
     </div>
 </div>
 
 <script>
 /**
- * 1:1 核心发声引擎 (纯代码波形合成，无需MP3文件)
+ * 高级原生波形音频引擎 (接近原著的 8-bit 复古质感)
  */
-const Synth = {
+const AudioSys = {
     ctx: null,
     init: function() { this.ctx = new (window.AudioContext || window.webkitAudioContext)(); },
     play: function(type) {
         if (!this.ctx) return;
         const osc = this.ctx.createOscillator();
-        const gainNode = this.ctx.createGain();
-        osc.connect(gainNode); gainNode.connect(this.ctx.destination);
-        const now = this.ctx.currentTime;
+        const gain = this.ctx.createGain();
+        osc.connect(gain); gain.connect(this.ctx.destination);
+        const t = this.ctx.currentTime;
 
         if (type === 'click') {
-            osc.type = 'sine'; osc.frequency.setValueAtTime(800, now);
-            gainNode.gain.setValueAtTime(0.2, now); gainNode.gain.exponentialRampToValueAtTime(0.01, now + 0.1);
-            osc.start(now); osc.stop(now + 0.1);
-        } else if (type === 'msg') {
-            osc.type = 'sine'; osc.frequency.setValueAtTime(1200, now); osc.frequency.setValueAtTime(1600, now + 0.1);
-            gainNode.gain.setValueAtTime(0.3, now); gainNode.gain.linearRampToValueAtTime(0, now + 0.3);
-            osc.start(now); osc.stop(now + 0.3);
-        } else if (type === 'stream') {
-            osc.type = 'square'; osc.frequency.setValueAtTime(400, now); osc.frequency.linearRampToValueAtTime(1600, now + 0.3);
-            gainNode.gain.setValueAtTime(0.15, now); gainNode.gain.linearRampToValueAtTime(0, now + 0.4);
-            osc.start(now); osc.stop(now + 0.4);
-        } else if (type === 'error') {
-            osc.type = 'sawtooth'; osc.frequency.setValueAtTime(150, now); osc.frequency.linearRampToValueAtTime(100, now + 0.5);
-            gainNode.gain.setValueAtTime(0.4, now); gainNode.gain.linearRampToValueAtTime(0.01, now + 0.5);
-            osc.start(now); osc.stop(now + 0.5);
+            osc.type = 'sine'; osc.frequency.setValueAtTime(800, t);
+            gain.gain.setValueAtTime(0.2, t); gain.gain.exponentialRampToValueAtTime(0.01, t + 0.1);
+            osc.start(t); osc.stop(t + 0.1);
+        } else if (type === 'jine') { // JINE 提示音 (双音调)
+            osc.type = 'sine'; osc.frequency.setValueAtTime(1046.50, t); osc.frequency.setValueAtTime(1318.51, t + 0.1);
+            gain.gain.setValueAtTime(0.3, t); gain.gain.linearRampToValueAtTime(0, t + 0.3);
+            osc.start(t); osc.stop(t + 0.3);
+        } else if (type === 'tweet') { // 推特刷新声
+            osc.type = 'square'; osc.frequency.setValueAtTime(400, t); osc.frequency.exponentialRampToValueAtTime(800, t + 0.1);
+            gain.gain.setValueAtTime(0.05, t); gain.gain.linearRampToValueAtTime(0, t + 0.15);
+            osc.start(t); osc.stop(t + 0.15);
+        } else if (type === 'stream') { // 变身特效声 (琶音)
+            osc.type = 'square'; osc.frequency.setValueAtTime(440, t); osc.frequency.setValueAtTime(554, t+0.1); osc.frequency.setValueAtTime(659, t+0.2); osc.frequency.setValueAtTime(880, t+0.3);
+            gain.gain.setValueAtTime(0.1, t); gain.gain.linearRampToValueAtTime(0, t + 0.5);
+            osc.start(t); osc.stop(t + 0.5);
+        } else if (type === 'error') { // 压力爆炸报错
+            osc.type = 'sawtooth'; osc.frequency.setValueAtTime(150, t); osc.frequency.linearRampToValueAtTime(80, t + 0.5);
+            gain.gain.setValueAtTime(0.3, t); gain.gain.linearRampToValueAtTime(0, t + 0.5);
+            osc.start(t); osc.stop(t + 0.5);
         }
     }
 };
 
 /**
- * 1:1 核心游戏引擎架构 (多结局 + 时间轴控制)
+ * 原版剧本流引擎数据
+ */
+const ScriptDB = {
+    events: {
+        day1: {
+            jine: ["阿P，设备全买好了！", "如果火不起来，本天使就要睡大街了捏...", "你要帮我一起成为最强女主播哦！"],
+            tweets: [{type:'kso', text:'啊啊啊好紧张好想吐，不想努力了。'}, {type:'angel', text:'初次见面！为了给大家带来笑容，超天酱降临！✝️升天✝️'}]
+        },
+        day2: {
+            jine: ["早上好阿P！", "昨晚激动得睡不着...", "今晚必须首播了！快帮我找找素材！"],
+            tweets: [{type:'kso', text:'网络上的白痴真多。'}, {type:'angel', text:'今晚有重大发表！记得来看超天酱哦💕'}]
+        }
+    },
+    actions: {
+        play: { jine: "跟阿P打游戏最棒了！", tweet: {type:'kso', text:'今天把队友骂破防了，爽。'} },
+        internet: { jine: "看了好多奇怪的帖子，阴暗的想法增加了...", tweet: {type:'kso', text:'这世界上烂人怎么这么多。'} },
+        meds: { jine: "吃完了，脑子飘飘的~", tweet: {type:'kso', text:'💊💊💊💊💊'} },
+        out: { jine: "出门散步了，外面的空气好新鲜！", tweet: {type:'angel', text:'今天去医院散步啦，大家也要注意身体哦！'} },
+        stream: { jine: "哈啊...直播好累，手都在抖...", tweet: {type:'angel', text:'感谢大家今天的陪伴！超天酱最喜欢大家了！'} }
+    }
+};
+
+/**
+ * 核心逻辑状态机
  */
 const Engine = {
-    state: {
-        day: 1,
-        timeStage: 0, // 0: 昼, 1: 夕, 2: 夜
-        fans: 0,
-        stress: 10,
-        affection: 50,
-        darkness: 20,
-        isGameOver: false
-    },
-    
-    timeLabels: ["🌅 昼", "🌇 夕", "🌃 夜"],
-    queue: [],
-    isProcessing: false,
+    state: { day: 1, timeStage: 0, fans: 0, stress: 10, aff: 50, dark: 20 },
+    labels: ["🌞 昼 (收集灵感)", "🌇 夕 (继续准备)", "🌃 夜 (可开播)"],
+    isGameOver: false,
 
-    bootUp: function() {
-        Synth.init();
+    boot: function() {
+        AudioSys.init();
         document.getElementById('boot-screen').style.opacity = '0';
         setTimeout(() => document.getElementById('boot-screen').style.display = 'none', 500);
-        
-        document.querySelectorAll('.window').forEach(w => w.style.display = 'flex');
-        this.updateUI();
         this.makeDraggable();
-        this.queueMsg("阿P！系统启动了！", "ame", 1000);
-        this.queueMsg("你要帮我成为最棒的互联网天使哦！", "ame", 1200);
+        this.updateUI();
+        this.triggerDayStart();
+    },
+
+    triggerDayStart: function() {
+        const ev = ScriptDB.events[`day${this.state.day}`] || ScriptDB.events.day2;
+        this.processJineQueue(ev.jine);
+        setTimeout(() => { ev.tweets.forEach((t, i) => setTimeout(() => this.pushTweet(t), i * 1000)); }, 2000);
+    },
+
+    doAction: function(act) {
+        if(this.isGameOver) return;
+        document.getElementById('blocker').style.display = 'block'; // 锁屏防乱点
+        AudioSys.play('click');
+
+        // 数值计算
+        switch(act) {
+            case 'play': this.state.stress -= 15; this.state.aff += 10; break;
+            case 'internet': this.state.stress -= 5; this.state.dark += 10; break;
+            case 'meds': this.state.stress -= 25; this.state.dark += 15; this.state.aff -= 5; break;
+            case 'out': this.state.stress -= 20; this.state.dark -= 10; this.state.aff += 5; break;
+            case 'sleep': this.state.stress -= 30; this.state.timeStage = 2; break; // 睡到明天
+            case 'stream': 
+                AudioSys.play('stream');
+                this.setCamMode('stream');
+                const gained = Math.floor(Math.random()*800) + 1000 * this.state.day;
+                this.state.fans += gained; this.state.stress += 25; this.state.dark += 5;
+                this.state.timeStage = 2; // 直播完强制过夜
+                break;
+        }
+
+        // 剧情回馈
+        const data = ScriptDB.actions[act];
+        this.processJineQueue([data.jine]);
+        setTimeout(() => { 
+            this.pushTweet(data.tweet); 
+            setTimeout(() => this.advanceTime(), 1500);
+        }, 1000);
+    },
+
+    advanceTime: function() {
+        this.state.timeStage++;
+        if (this.state.timeStage > 2) {
+            this.state.timeStage = 0;
+            this.state.day++;
+            // 新的一天清空记录
+            document.getElementById('ui-jine').innerHTML = '';
+            document.getElementById('ui-poketter').innerHTML = '';
+            this.triggerDayStart();
+        }
+        this.setCamMode('normal');
+        this.updateUI();
+        document.getElementById('blocker').style.display = 'none';
     },
 
     updateUI: function() {
-        // 更新时间轴
-        document.getElementById('ui-time').innerText = `DAY ${this.state.day} - ${this.timeLabels[this.state.timeStage]}`;
-        document.getElementById('btn-stream').disabled = (this.state.timeStage !== 2); // 仅夜晚可直播
-
-        // 更新数值
-        document.getElementById('ui-fans').innerText = `${this.state.fans.toLocaleString()} 粉丝`;
-        document.getElementById('ui-stress-val').innerText = `${this.state.stress}/120`;
-        document.getElementById('ui-stress-bar').style.width = `${Math.min(100, (this.state.stress / 120) * 100)}%`;
-        if(this.state.stress >= 80) document.getElementById('ui-stress-bar').style.background = "#d63031"; // 高压变红
-        else document.getElementById('ui-stress-bar').style.background = "#e17055";
-
-        document.getElementById('ui-aff-val').innerText = `${this.state.affection}/100`;
-        document.getElementById('ui-aff-bar').style.width = `${this.state.affection}%`;
-
-        document.getElementById('ui-dark-val').innerText = `${this.state.darkness}/100`;
-        document.getElementById('ui-dark-bar').style.width = `${this.state.darkness}%`;
-
-        // 更新房间状态
-        document.getElementById('cam-bg').style.background = "#2f3640";
-        document.getElementById('rec-dot').style.display = "none";
-        document.getElementById('ame-sprite').innerText = this.state.stress >= 80 ? "😱" : (this.state.darkness >= 80 ? "👁️" : "👧🏻");
-    },
-
-    advanceTime: function(skipToNextDay = false) {
-        if (skipToNextDay) {
-            this.state.day++;
-            this.state.timeStage = 0;
-        } else {
-            this.state.timeStage++;
-            if (this.state.timeStage > 2) {
-                this.state.timeStage = 0;
-                this.state.day++;
-            }
-        }
-    },
-
-    doAction: function(action) {
-        if (this.state.isGameOver) return;
-        Synth.play('click');
-
-        switch(action) {
-            case 'play':
-                this.state.stress -= 15; this.state.affection += 12;
-                this.queueMsg("跟你打游戏最开心了！", "ame");
-                this.advanceTime();
-                break;
-            case 'internet':
-                this.state.stress -= 5; this.state.darkness += 10;
-                this.queueMsg("网上的人说话真难听...", "ame");
-                this.queueMsg("不过找到了直播素材。", "ame", 1000);
-                this.advanceTime();
-                break;
-            case 'meds':
-                this.state.stress -= 25; this.state.darkness += 15; this.state.affection -= 5;
-                this.queueMsg("吃了魔法药片，感觉轻飘飘的。", "ame");
-                this.advanceTime();
-                break;
-            case 'out':
-                this.state.stress -= 20; this.state.affection += 5; this.state.darkness -= 10;
-                this.queueMsg("外面的空气偶尔闻闻也不错呢。", "ame");
-                this.advanceTime();
-                break;
-            case 'sleep':
-                this.state.stress -= 30;
-                this.queueMsg("睡觉了，晚安阿P。", "ame");
-                this.advanceTime(true);
-                break;
-            case 'stream':
-                Synth.play('stream');
-                // 变身特效
-                document.getElementById('ame-sprite').innerText = "👼🏻";
-                document.getElementById('cam-bg').style.background = "radial-gradient(circle, #ff9eb1 0%, #2f3640 80%)";
-                document.getElementById('rec-dot').style.display = "block";
-                
-                const f = Math.floor(Math.random() * 800) + 200 * this.state.day;
-                this.state.stress += 25; this.state.fans += f; this.state.darkness += 5;
-                this.queueMsg(`🙏✝️升天✝️🙏 超天酱开播啦！`, "ame");
-                this.queueMsg(`直播结束，涨了 ${f} 粉...好累，想吐。`, "ame", 2000);
-                this.advanceTime(true); // 直播完直接到第二天
-                break;
-        }
-
         // 数值钳制
-        this.state.stress = Math.min(120, Math.max(0, this.state.stress));
-        this.state.affection = Math.min(100, Math.max(0, this.state.affection));
-        this.state.darkness = Math.min(100, Math.max(0, this.state.darkness));
+        this.state.stress = Math.max(0, Math.min(120, this.state.stress));
+        this.state.aff = Math.max(0, Math.min(100, this.state.aff));
+        this.state.dark = Math.max(0, Math.min(100, this.state.dark));
 
-        this.updateUI();
-        this.checkEndings();
-    },
+        // 刷新面板
+        document.getElementById('ui-time').innerText = `DAY ${this.state.day} - ${this.labels[this.state.timeStage]}`;
+        document.getElementById('ui-fans').innerText = this.state.fans.toLocaleString();
+        
+        document.getElementById('txt-stress').innerText = `${this.state.stress}/120`;
+        const stressBar = document.getElementById('bar-stress');
+        stressBar.style.width = `${(this.state.stress/120)*100}%`;
+        stressBar.style.background = this.state.stress > 80 ? '#d63031' : '#ff7675';
 
-    checkEndings: function() {
-        // 多结局判定机制
+        document.getElementById('txt-aff').innerText = `${this.state.aff}/100`;
+        document.getElementById('bar-aff').style.width = `${this.state.aff}%`;
+        
+        document.getElementById('txt-dark').innerText = `${this.state.dark}/100`;
+        document.getElementById('bar-dark').style.width = `${this.state.dark}%`;
+
+        // 按钮控制
+        document.getElementById('btn-stream').disabled = (this.state.timeStage !== 2);
+
+        // 状态判定
         if (this.state.stress >= 120) {
-            this.triggerEnding("Stress Breakdown (压力过载)", "糖糖的头快裂开了，她砸坏了键盘。直播无法继续了。");
-        } else if (this.state.darkness >= 100) {
-            this.triggerEnding("Darkness Consumed (阴暗吞噬)", "黑暗完全笼罩了糖糖...她拉黑了你所有的联系方式。");
-        } else if (this.state.affection >= 100) {
-            this.triggerEnding("Overly Attached (过度依赖)", "糖糖再也不想直播了，她只想每天每夜和你黏在一起，直到永远。");
-        } else if (this.state.fans >= 1000000) {
-            this.triggerEnding("Do You Love Me? (达成百万粉)", "百万粉丝的目标达成了！她成为了真正的互联网天使！");
+            this.isGameOver = true;
+            AudioSys.play('error');
+            this.setCamMode('broken');
+            setTimeout(() => alert("【结局】压力过载 (Stress Breakdown)\n糖糖砸坏了电脑，切断了与你的联系。"), 1000);
+        } else if (document.getElementById('ui-avatar').innerText !== "👼🏻") {
+            // 根据状态切换替代形象
+            document.getElementById('ui-avatar').innerText = this.state.stress >= 80 ? "😱" : (this.state.dark >= 80 ? "💊" : "🎀");
         }
     },
 
-    triggerEnding: function(title, desc) {
-        this.state.isGameOver = true;
-        Synth.play('error');
-        setTimeout(() => {
-            const screen = document.getElementById('ending-screen');
-            document.getElementById('ending-title').innerText = `ENDING: ${title}`;
-            document.getElementById('ending-desc').innerText = desc;
-            screen.style.display = 'flex';
-        }, 1500);
+    setCamMode: function(mode) {
+        const bg = document.getElementById('ui-cam-bg');
+        const rec = document.getElementById('ui-rec');
+        const ava = document.getElementById('ui-avatar');
+        
+        if (mode === 'stream') {
+            bg.style.background = "radial-gradient(circle, #ff9eb1 0%, #2f3640 80%)";
+            rec.style.display = 'block';
+            ava.innerText = "👼🏻";
+        } else if (mode === 'broken') {
+            bg.style.background = "#000";
+            rec.style.display = 'none';
+            ava.innerText = "❌";
+        } else {
+            bg.style.background = "#2f3640";
+            rec.style.display = 'none';
+        }
     },
 
-    queueMsg: function(text, sender, delay = 800) {
-        this.queue.push({ text, sender, delay });
-        if (!this.isProcessing) this.processQueue();
-    },
-
-    async processQueue() {
-        this.isProcessing = true;
-        const box = document.getElementById('jine-history');
-        while (this.queue.length > 0) {
-            const msg = this.queue.shift();
-            await new Promise(r => setTimeout(r, msg.delay));
-            
-            Synth.play('msg'); // 接收消息音效
-
+    processJineQueue: async function(arr) {
+        for(let msg of arr) {
+            await new Promise(r => setTimeout(r, 800));
+            AudioSys.play('jine');
+            const box = document.getElementById('ui-jine');
             const div = document.createElement('div');
-            div.className = `msg-wrap ${msg.sender === 'p' ? 'player' : ''}`;
-            div.innerHTML = `<div class="msg-avatar">${msg.sender === 'p' ? 'P' : '🎀'}</div><div class="msg-bubble">${msg.text}</div>`;
+            div.className = 'msg msg-ame';
+            div.innerText = msg;
             box.appendChild(div);
-            box.scrollTo({ top: box.scrollHeight, behavior: 'smooth' });
+            box.scrollTop = box.scrollHeight;
         }
-        this.isProcessing = false;
+    },
+
+    replyJine: function() {
+        if(this.isGameOver) return;
+        AudioSys.play('click');
+        const box = document.getElementById('ui-jine');
+        const div = document.createElement('div');
+        div.className = 'msg msg-p';
+        div.innerText = "摸摸头";
+        box.appendChild(div);
+        box.scrollTop = box.scrollHeight;
+        
+        this.state.aff = Math.min(100, this.state.aff + 2);
+        this.updateUI();
+    },
+
+    pushTweet: function(data) {
+        AudioSys.play('tweet');
+        const box = document.getElementById('ui-poketter');
+        const div = document.createElement('div');
+        div.className = `tweet tweet-${data.type}`;
+        div.innerHTML = `<div class="tweet-header">${data.type==='angel'?'👼 超天酱':'💊 糖糖'}</div>${data.text}`;
+        box.prepend(div); // 新推文在最上面
     },
 
     makeDraggable: function() {
@@ -339,8 +372,7 @@ const Engine = {
             title.addEventListener('mousedown', e => {
                 isDown = true; startX = e.clientX; startY = e.clientY;
                 winX = win.offsetLeft; winY = win.offsetTop;
-                // 点击置顶
-                document.querySelectorAll('.window').forEach(w => w.style.zIndex = 10);
+                document.querySelectorAll('.window').forEach(w => w.style.zIndex = 1);
                 win.style.zIndex = 100;
             });
             document.addEventListener('mousemove', e => {
