@@ -1,89 +1,357 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>主播女孩重度依赖 - 1:1 H5复刻引擎</title>
+    <link rel="stylesheet" href="https://unpkg.com/98.css" />
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=DotGothic16&display=swap');
+        
+        /* 1:1 还原经典粉色网格桌面 */
+        body, html { margin: 0; padding: 0; width: 100vw; height: 100vh; overflow: hidden; font-family: 'DotGothic16', 'SimSun', monospace; background: repeating-linear-gradient(-45deg, #ffb8c6, #ffb8c6 20px, #ff9eb1 20px, #ff9eb1 40px); user-select: none; }
+        
+        /* 1:1 还原 CRT 屏幕扫描线特效 */
+        .crt::before { content: " "; display: block; position: absolute; top: 0; left: 0; bottom: 0; right: 0; background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.1) 50%); background-size: 100% 3px; z-index: 9998; pointer-events: none; }
+        
+        /* 开机引导层 (用于激活网页音频权限) */
+        #boot-screen { position: absolute; top: 0; left: 0; width: 100vw; height: 100vh; background: black; color: white; z-index: 10000; display: flex; flex-direction: column; align-items: center; justify-content: center; cursor: pointer; transition: opacity 0.5s; }
+        .blinking-cursor::after { content: "_"; animation: blink 1s step-end infinite; }
+        @keyframes blink { 50% { opacity: 0; } }
+
+        /* 视窗基础架构 */
+        .window { position: absolute; box-shadow: 3px 3px 15px rgba(0,0,0,0.4); display: flex; flex-direction: column; }
+        .title-bar { cursor: grab; background: linear-gradient(90deg, #000080, #1084d0); }
+        .window-body { flex-grow: 1; margin: 6px; display: flex; flex-direction: column; overflow: hidden; background: #c0c0c0;}
+        
+        /* --- UI 模块 --- */
+        /* 1. JINE 聊天系统 */
+        #win-jine { width: 340px; height: 500px; left: 30px; top: 30px; }
+        .jine-bg { background: #82ccdd; flex-grow: 1; border: inset 2px; display: flex; flex-direction: column; overflow: hidden; }
+        .jine-header { background: #60a3bc; padding: 5px; color: white; text-align: center; font-weight: bold; border-bottom: solid 2px #3c6382; }
+        .jine-chat { flex-grow: 1; overflow-y: auto; padding: 15px 10px; display: flex; flex-direction: column; gap: 12px; }
+        .msg-wrap { display: flex; align-items: flex-start; gap: 8px; width: 100%; animation: popIn 0.2s ease-out;}
+        .msg-wrap.player { flex-direction: row-reverse; }
+        /* 替换此处的纯色圆圈为真实头像以达到1:1 */
+        .msg-avatar { width: 36px; height: 36px; background: #fff; border-radius: 50%; border: 2px solid #2f3640; display: flex; align-items: center; justify-content: center; font-size: 20px; flex-shrink: 0;}
+        .msg-bubble { max-width: 65%; padding: 8px 12px; border-radius: 15px; font-size: 14px; line-height: 1.5; background: #fff; border: 2px solid #2f3640; word-wrap: break-word;}
+        .player .msg-bubble { background: #78e08f; }
+        @keyframes popIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+        /* 2. 状态管理器 (Taskmgr) */
+        #win-stats { width: 280px; left: 400px; top: 30px; }
+        .stat-panel { background: #fff; border: inset 2px; padding: 10px; }
+        .stat-row { display: flex; justify-content: space-between; font-size: 13px; margin: 8px 0 2px 0; font-weight: bold;}
+        .stat-bar-bg { width: 100%; border: inset 2px; height: 16px; background: #e0e0e0; }
+        .stat-bar-fill { height: 100%; transition: width 0.3s; }
+
+        /* 3. 摄像头/糖糖的房间 (Cam) */
+        #win-cam { width: 340px; height: 260px; left: 700px; top: 30px; }
+        .cam-bg { background: #2f3640; flex-grow: 1; border: inset 2px; display: flex; align-items: center; justify-content: center; position: relative; overflow: hidden; transition: background 0.5s;}
+        /* 替换此处的 emoji 为真实 Live2D 截图或 GIF 以达到1:1 */
+        .ame-sprite { font-size: 100px; transition: transform 0.3s; }
+        .rec-dot { position: absolute; top: 10px; left: 10px; color: red; font-weight: bold; font-size: 14px; display: none; animation: blink 1s infinite;}
+
+        /* 4. 行动控制台 (Actions) */
+        #win-actions { width: 450px; left: 400px; top: 320px; }
+        .action-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; padding: 4px; }
+        .action-btn { height: 60px; cursor: pointer; border: outset 2px; background: #dfdfdf; font-weight: bold; display: flex; flex-direction: column; align-items: center; justify-content: center;}
+        .action-btn:active { border: inset 2px; }
+        .action-btn:disabled { color: #888; filter: grayscale(1); cursor: not-allowed; }
+
+        /* 结局遮罩层 */
+        #ending-screen { display: none; position: absolute; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0,0,0,0.9); z-index: 20000; color: white; flex-direction: column; align-items: center; justify-content: center; font-size: 24px; text-align: center; padding: 20px;}
+    </style>
+</head>
+<body class="crt">
+
+<div id="boot-screen" onclick="Engine.bootUp()">
+    <h2 class="blinking-cursor">Windose OS Booting...</h2>
+    <p style="color: #aaa; margin-top: 20px;">[ 点击任意位置启动系统与音频模块 ]</p>
+</div>
+
+<div id="ending-screen">
+    <h1 id="ending-title" style="color: red;">ENDING</h1>
+    <p id="ending-desc" style="font-size: 16px; color: #ccc;"></p>
+    <button onclick="location.reload()" style="margin-top: 30px; padding: 10px 20px;">REBOOT (重启游戏)</button>
+</div>
+
+<div class="window" id="win-jine" style="display:none;">
+    <div class="title-bar"><div class="title-bar-text">💬 JINE.exe</div></div>
+    <div class="window-body">
+        <div class="jine-bg">
+            <div class="jine-header">🎀 糖糖 🎀</div>
+            <div class="jine-chat" id="jine-history"></div>
+        </div>
+    </div>
+</div>
+
+<div class="window" id="win-stats" style="display:none;">
+    <div class="title-bar"><div class="title-bar-text">📊 Taskmgr.exe</div></div>
+    <div class="window-body">
+        <div class="stat-panel">
+            <div style="text-align: center; font-size: 18px; font-weight: bold; border-bottom: 2px dashed #aaa; padding-bottom: 5px;" id="ui-time">DAY 1 - 🌅 昼</div>
+            <div style="text-align: center; color: #0984e3; font-size: 24px; font-weight: bold; margin-top: 10px;" id="ui-fans">0 粉丝</div>
+            
+            <div class="stat-row"><span>压力 (Stress)</span><span id="ui-stress-val">10/120</span></div>
+            <div class="stat-bar-bg"><div class="stat-bar-fill" id="ui-stress-bar" style="background: #e17055; width: 8%;"></div></div>
+            
+            <div class="stat-row"><span>好感 (Affection)</span><span id="ui-aff-val">50/100</span></div>
+            <div class="stat-bar-bg"><div class="stat-bar-fill" id="ui-aff-bar" style="background: #fd79a8; width: 50%;"></div></div>
+            
+            <div class="stat-row"><span>阴暗 (Darkness)</span><span id="ui-dark-val">20/100</span></div>
+            <div class="stat-bar-bg"><div class="stat-bar-fill" id="ui-dark-bar" style="background: #6c5ce7; width: 20%;"></div></div>
+        </div>
+    </div>
+</div>
+
+<div class="window" id="win-cam" style="display:none;">
+    <div class="title-bar"><div class="title-bar-text">📹 WebCam_01</div></div>
+    <div class="window-body">
+        <div class="cam-bg" id="cam-bg">
+            <div class="rec-dot" id="rec-dot">● REC</div>
+            <div class="ame-sprite" id="ame-sprite">👧🏻</div>
+        </div>
+    </div>
+</div>
+
+<div class="window" id="win-actions" style="display:none;">
+    <div class="title-bar"><div class="title-bar-text">⚙️ Actions.exe</div></div>
+    <div class="window-body" style="background: #fff; border: inset 2px;">
+        <div class="action-grid">
+            <button class="action-btn" onclick="Engine.doAction('play')"><span>🎮</span>打游戏</button>
+            <button class="action-btn" onclick="Engine.doAction('internet')"><span>🌐</span>网上冲浪</button>
+            <button class="action-btn" onclick="Engine.doAction('meds')"><span>💊</span>吃药</button>
+            <button class="action-btn" onclick="Engine.doAction('out')"><span>🏥</span>出门散心</button>
+            <button class="action-btn" onclick="Engine.doAction('sleep')"><span>🛏️</span>睡觉到天亮</button>
+            <button class="action-btn" id="btn-stream" onclick="Engine.doAction('stream')" disabled style="background: #fab1a0;"><span>📺</span>开始直播 (仅夜晚)</button>
+        </div>
+    </div>
+</div>
+
+<script>
 /**
- * ==========================================
- * 纯网页接口音频引擎 (Web Audio API & 外链)
- * 完全不需要本地上传音效文件！
- * ==========================================
+ * 1:1 核心发声引擎 (纯代码波形合成，无需MP3文件)
  */
-const AudioSys = {
-    // 1. BGM: 使用外部网络直链 (这里我放了一个免费的复古电子节拍做测试)
-    // 你可以随时把它换成网上找到的任意 MP3 链接
-    bgm: new Audio('https://cdn.pixabay.com/download/audio/2022/01/18/audio_d0a13f69d2.mp3'),
-    
-    // 初始化网页音频合成器接口
-    audioCtx: null,
+const Synth = {
+    ctx: null,
+    init: function() { this.ctx = new (window.AudioContext || window.webkitAudioContext)(); },
+    play: function(type) {
+        if (!this.ctx) return;
+        const osc = this.ctx.createOscillator();
+        const gainNode = this.ctx.createGain();
+        osc.connect(gainNode); gainNode.connect(this.ctx.destination);
+        const now = this.ctx.currentTime;
 
-    initBGM: function() {
-        this.bgm.loop = true;
-        this.bgm.volume = 0.3;
-        this.bgm.play().catch(e => console.warn("外链BGM可能被浏览器拦截或链接失效:", e));
-        
-        // 激活音频上下文 (必须在玩家点击后激活)
-        if (!this.audioCtx) {
-            this.audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-        }
-        if (this.audioCtx.state === 'suspended') {
-            this.audioCtx.resume();
-        }
-    },
-
-    // 2. 纯代码合成复古 8-bit 音效
-    playSFX: function(type) {
-        if (!this.audioCtx) return;
-        
-        const osc = this.audioCtx.createOscillator();
-        const gainNode = this.audioCtx.createGain();
-        
-        osc.connect(gainNode);
-        gainNode.connect(this.audioCtx.destination);
-
-        const now = this.audioCtx.currentTime;
-
-        // 根据不同动作，用代码合成不同的频率和波形
-        switch(type) {
-            case 'click':
-                // 清脆的短促点击声 (正弦波)
-                osc.type = 'sine';
-                osc.frequency.setValueAtTime(800, now);
-                gainNode.gain.setValueAtTime(0.3, now);
-                gainNode.gain.exponentialRampToValueAtTime(0.01, now + 0.1);
-                osc.start(now);
-                osc.stop(now + 0.1);
-                break;
-                
-            case 'jine':
-                // JINE 收发消息的“叮咚”声 (双重频率)
-                osc.type = 'sine';
-                osc.frequency.setValueAtTime(1200, now);
-                osc.frequency.setValueAtTime(1600, now + 0.1);
-                gainNode.gain.setValueAtTime(0.4, now);
-                gainNode.gain.linearRampToValueAtTime(0, now + 0.3);
-                osc.start(now);
-                osc.stop(now + 0.3);
-                break;
-                
-            case 'stream':
-                // 魔法变身开播特效声 (快速上升的琶音)
-                osc.type = 'square';
-                osc.frequency.setValueAtTime(400, now);
-                osc.frequency.linearRampToValueAtTime(800, now + 0.1);
-                osc.frequency.linearRampToValueAtTime(1200, now + 0.2);
-                osc.frequency.linearRampToValueAtTime(1600, now + 0.3);
-                gainNode.gain.setValueAtTime(0.2, now);
-                gainNode.gain.linearRampToValueAtTime(0, now + 0.4);
-                osc.start(now);
-                osc.stop(now + 0.4);
-                break;
-                
-            case 'error':
-                // 压力过载的报错声 (刺耳的锯齿波)
-                osc.type = 'sawtooth';
-                osc.frequency.setValueAtTime(150, now);
-                osc.frequency.linearRampToValueAtTime(100, now + 0.5);
-                gainNode.gain.setValueAtTime(0.5, now);
-                gainNode.gain.linearRampToValueAtTime(0.01, now + 0.5);
-                osc.start(now);
-                osc.stop(now + 0.5);
-                break;
+        if (type === 'click') {
+            osc.type = 'sine'; osc.frequency.setValueAtTime(800, now);
+            gainNode.gain.setValueAtTime(0.2, now); gainNode.gain.exponentialRampToValueAtTime(0.01, now + 0.1);
+            osc.start(now); osc.stop(now + 0.1);
+        } else if (type === 'msg') {
+            osc.type = 'sine'; osc.frequency.setValueAtTime(1200, now); osc.frequency.setValueAtTime(1600, now + 0.1);
+            gainNode.gain.setValueAtTime(0.3, now); gainNode.gain.linearRampToValueAtTime(0, now + 0.3);
+            osc.start(now); osc.stop(now + 0.3);
+        } else if (type === 'stream') {
+            osc.type = 'square'; osc.frequency.setValueAtTime(400, now); osc.frequency.linearRampToValueAtTime(1600, now + 0.3);
+            gainNode.gain.setValueAtTime(0.15, now); gainNode.gain.linearRampToValueAtTime(0, now + 0.4);
+            osc.start(now); osc.stop(now + 0.4);
+        } else if (type === 'error') {
+            osc.type = 'sawtooth'; osc.frequency.setValueAtTime(150, now); osc.frequency.linearRampToValueAtTime(100, now + 0.5);
+            gainNode.gain.setValueAtTime(0.4, now); gainNode.gain.linearRampToValueAtTime(0.01, now + 0.5);
+            osc.start(now); osc.stop(now + 0.5);
         }
     }
 };
+
+/**
+ * 1:1 核心游戏引擎架构 (多结局 + 时间轴控制)
+ */
+const Engine = {
+    state: {
+        day: 1,
+        timeStage: 0, // 0: 昼, 1: 夕, 2: 夜
+        fans: 0,
+        stress: 10,
+        affection: 50,
+        darkness: 20,
+        isGameOver: false
+    },
+    
+    timeLabels: ["🌅 昼", "🌇 夕", "🌃 夜"],
+    queue: [],
+    isProcessing: false,
+
+    bootUp: function() {
+        Synth.init();
+        document.getElementById('boot-screen').style.opacity = '0';
+        setTimeout(() => document.getElementById('boot-screen').style.display = 'none', 500);
+        
+        document.querySelectorAll('.window').forEach(w => w.style.display = 'flex');
+        this.updateUI();
+        this.makeDraggable();
+        this.queueMsg("阿P！系统启动了！", "ame", 1000);
+        this.queueMsg("你要帮我成为最棒的互联网天使哦！", "ame", 1200);
+    },
+
+    updateUI: function() {
+        // 更新时间轴
+        document.getElementById('ui-time').innerText = `DAY ${this.state.day} - ${this.timeLabels[this.state.timeStage]}`;
+        document.getElementById('btn-stream').disabled = (this.state.timeStage !== 2); // 仅夜晚可直播
+
+        // 更新数值
+        document.getElementById('ui-fans').innerText = `${this.state.fans.toLocaleString()} 粉丝`;
+        document.getElementById('ui-stress-val').innerText = `${this.state.stress}/120`;
+        document.getElementById('ui-stress-bar').style.width = `${Math.min(100, (this.state.stress / 120) * 100)}%`;
+        if(this.state.stress >= 80) document.getElementById('ui-stress-bar').style.background = "#d63031"; // 高压变红
+        else document.getElementById('ui-stress-bar').style.background = "#e17055";
+
+        document.getElementById('ui-aff-val').innerText = `${this.state.affection}/100`;
+        document.getElementById('ui-aff-bar').style.width = `${this.state.affection}%`;
+
+        document.getElementById('ui-dark-val').innerText = `${this.state.darkness}/100`;
+        document.getElementById('ui-dark-bar').style.width = `${this.state.darkness}%`;
+
+        // 更新房间状态
+        document.getElementById('cam-bg').style.background = "#2f3640";
+        document.getElementById('rec-dot').style.display = "none";
+        document.getElementById('ame-sprite').innerText = this.state.stress >= 80 ? "😱" : (this.state.darkness >= 80 ? "👁️" : "👧🏻");
+    },
+
+    advanceTime: function(skipToNextDay = false) {
+        if (skipToNextDay) {
+            this.state.day++;
+            this.state.timeStage = 0;
+        } else {
+            this.state.timeStage++;
+            if (this.state.timeStage > 2) {
+                this.state.timeStage = 0;
+                this.state.day++;
+            }
+        }
+    },
+
+    doAction: function(action) {
+        if (this.state.isGameOver) return;
+        Synth.play('click');
+
+        switch(action) {
+            case 'play':
+                this.state.stress -= 15; this.state.affection += 12;
+                this.queueMsg("跟你打游戏最开心了！", "ame");
+                this.advanceTime();
+                break;
+            case 'internet':
+                this.state.stress -= 5; this.state.darkness += 10;
+                this.queueMsg("网上的人说话真难听...", "ame");
+                this.queueMsg("不过找到了直播素材。", "ame", 1000);
+                this.advanceTime();
+                break;
+            case 'meds':
+                this.state.stress -= 25; this.state.darkness += 15; this.state.affection -= 5;
+                this.queueMsg("吃了魔法药片，感觉轻飘飘的。", "ame");
+                this.advanceTime();
+                break;
+            case 'out':
+                this.state.stress -= 20; this.state.affection += 5; this.state.darkness -= 10;
+                this.queueMsg("外面的空气偶尔闻闻也不错呢。", "ame");
+                this.advanceTime();
+                break;
+            case 'sleep':
+                this.state.stress -= 30;
+                this.queueMsg("睡觉了，晚安阿P。", "ame");
+                this.advanceTime(true);
+                break;
+            case 'stream':
+                Synth.play('stream');
+                // 变身特效
+                document.getElementById('ame-sprite').innerText = "👼🏻";
+                document.getElementById('cam-bg').style.background = "radial-gradient(circle, #ff9eb1 0%, #2f3640 80%)";
+                document.getElementById('rec-dot').style.display = "block";
+                
+                const f = Math.floor(Math.random() * 800) + 200 * this.state.day;
+                this.state.stress += 25; this.state.fans += f; this.state.darkness += 5;
+                this.queueMsg(`🙏✝️升天✝️🙏 超天酱开播啦！`, "ame");
+                this.queueMsg(`直播结束，涨了 ${f} 粉...好累，想吐。`, "ame", 2000);
+                this.advanceTime(true); // 直播完直接到第二天
+                break;
+        }
+
+        // 数值钳制
+        this.state.stress = Math.min(120, Math.max(0, this.state.stress));
+        this.state.affection = Math.min(100, Math.max(0, this.state.affection));
+        this.state.darkness = Math.min(100, Math.max(0, this.state.darkness));
+
+        this.updateUI();
+        this.checkEndings();
+    },
+
+    checkEndings: function() {
+        // 多结局判定机制
+        if (this.state.stress >= 120) {
+            this.triggerEnding("Stress Breakdown (压力过载)", "糖糖的头快裂开了，她砸坏了键盘。直播无法继续了。");
+        } else if (this.state.darkness >= 100) {
+            this.triggerEnding("Darkness Consumed (阴暗吞噬)", "黑暗完全笼罩了糖糖...她拉黑了你所有的联系方式。");
+        } else if (this.state.affection >= 100) {
+            this.triggerEnding("Overly Attached (过度依赖)", "糖糖再也不想直播了，她只想每天每夜和你黏在一起，直到永远。");
+        } else if (this.state.fans >= 1000000) {
+            this.triggerEnding("Do You Love Me? (达成百万粉)", "百万粉丝的目标达成了！她成为了真正的互联网天使！");
+        }
+    },
+
+    triggerEnding: function(title, desc) {
+        this.state.isGameOver = true;
+        Synth.play('error');
+        setTimeout(() => {
+            const screen = document.getElementById('ending-screen');
+            document.getElementById('ending-title').innerText = `ENDING: ${title}`;
+            document.getElementById('ending-desc').innerText = desc;
+            screen.style.display = 'flex';
+        }, 1500);
+    },
+
+    queueMsg: function(text, sender, delay = 800) {
+        this.queue.push({ text, sender, delay });
+        if (!this.isProcessing) this.processQueue();
+    },
+
+    async processQueue() {
+        this.isProcessing = true;
+        const box = document.getElementById('jine-history');
+        while (this.queue.length > 0) {
+            const msg = this.queue.shift();
+            await new Promise(r => setTimeout(r, msg.delay));
+            
+            Synth.play('msg'); // 接收消息音效
+
+            const div = document.createElement('div');
+            div.className = `msg-wrap ${msg.sender === 'p' ? 'player' : ''}`;
+            div.innerHTML = `<div class="msg-avatar">${msg.sender === 'p' ? 'P' : '🎀'}</div><div class="msg-bubble">${msg.text}</div>`;
+            box.appendChild(div);
+            box.scrollTo({ top: box.scrollHeight, behavior: 'smooth' });
+        }
+        this.isProcessing = false;
+    },
+
+    makeDraggable: function() {
+        document.querySelectorAll('.window').forEach(win => {
+            const title = win.querySelector('.title-bar');
+            let isDown = false, startX, startY, winX, winY;
+            title.addEventListener('mousedown', e => {
+                isDown = true; startX = e.clientX; startY = e.clientY;
+                winX = win.offsetLeft; winY = win.offsetTop;
+                // 点击置顶
+                document.querySelectorAll('.window').forEach(w => w.style.zIndex = 10);
+                win.style.zIndex = 100;
+            });
+            document.addEventListener('mousemove', e => {
+                if (!isDown) return;
+                win.style.left = (winX + e.clientX - startX) + 'px';
+                win.style.top = (winY + e.clientY - startY) + 'px';
+            });
+            document.addEventListener('mouseup', () => isDown = false);
+        });
+    }
+};
+</script>
+</body>
+</html>
