@@ -173,3 +173,208 @@ setTimeout(() => {
     game.executeAction('stream');
     game.executeAction('stream'); 
 }, 8000);
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Needy Streamer Overload - OS Web Edition</title>
+    <link rel="stylesheet" href="https://unpkg.com/98.css" />
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=DotGothic16&display=swap');
+
+        /* =========================================
+           OS 核心层与动态背景
+           ========================================= */
+        body, html {
+            margin: 0; padding: 0; width: 100vw; height: 100vh; overflow: hidden;
+            font-family: 'DotGothic16', 'SimSun', monospace; background-color: #ffb8c6;
+            user-select: none;
+        }
+
+        /* 动态无限滚动粉色网格 */
+        .desktop-bg {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: -1;
+            background-image: 
+                linear-gradient(rgba(255,255,255,0.4) 2px, transparent 2px),
+                linear-gradient(90deg, rgba(255,255,255,0.4) 2px, transparent 2px);
+            background-size: 30px 30px;
+            animation: scrollGrid 10s linear infinite;
+        }
+        @keyframes scrollGrid { 0% { background-position: 0px 0px; } 100% { background-position: 30px 30px; } }
+
+        /* CRT 扫描线与闪烁 */
+        .crt-overlay {
+            position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; z-index: 9998; pointer-events: none;
+            background: linear-gradient(rgba(18,16,16,0) 50%, rgba(0,0,0,0.1) 50%); background-size: 100% 3px;
+        }
+
+        /* 故障滤镜 (高压状态) */
+        .glitch-active { animation: rgb-shift 0.15s infinite alternate; filter: contrast(150%) saturate(150%); }
+        @keyframes rgb-shift {
+            0% { transform: translate(2px, 1px); text-shadow: -2px 0 #ff00c8, 2px 0 #00ffff; }
+            100% { transform: translate(-2px, -1px); text-shadow: 2px 0 #ff00c8, -2px 0 #00ffff; }
+        }
+
+        /* =========================================
+           桌面图标系统
+           ========================================= */
+        .icon-grid { display: flex; flex-direction: column; gap: 20px; padding: 20px; position: absolute; z-index: 1; }
+        .desktop-icon { width: 70px; display: flex; flex-direction: column; align-items: center; text-align: center; color: white; cursor: pointer; text-shadow: 1px 1px 2px #000; }
+        .desktop-icon img { width: 48px; height: 48px; background: rgba(255,255,255,0.8); border: outset 2px #fff; margin-bottom: 5px; font-size: 36px; line-height: 48px; }
+        .desktop-icon.selected img { filter: invert(100%); border: dotted 2px #000; }
+        .desktop-icon.selected span { background: #000080; color: white; text-shadow: none; padding: 0 4px; }
+
+        /* =========================================
+           视窗系统极致还原
+           ========================================= */
+        .window { position: absolute; display: none; box-shadow: 2px 2px 0px #000, 4px 4px 15px rgba(0,0,0,0.4); }
+        .title-bar { cursor: grab; background: linear-gradient(90deg, #ff6b81, #ff4757); padding: 4px; }
+        .title-bar:active { cursor: grabbing; }
+        .window-body { margin: 4px; display: flex; flex-direction: column; background: #c0c0c0; border: inset 2px #fff; }
+
+        /* 1. JINE */
+        #win-jine { width: 360px; height: 650px; left: 40px; top: 40px; }
+        .jine-container { background: #82ccdd; flex-grow: 1; display: flex; flex-direction: column; overflow: hidden; position: relative;}
+        .jine-header { background: rgba(255,255,255,0.5); padding: 8px; font-weight: bold; border-bottom: solid 2px #60a3bc; display: flex; justify-content: space-between;}
+        .jine-chat { flex-grow: 1; overflow-y: auto; padding: 15px; display: flex; flex-direction: column; gap: 15px; }
+        .jine-msg-row { display: flex; align-items: flex-start; gap: 10px; animation: slideIn 0.3s cubic-bezier(0.25, 0.8, 0.25, 1); }
+        .jine-msg-row.player { flex-direction: row-reverse; }
+        .jine-avatar { width: 40px; height: 40px; background: #fff; border-radius: 50%; border: 2px solid #2f3640; display: flex; align-items: center; justify-content: center; font-size: 24px; flex-shrink: 0; box-shadow: 1px 1px 0 #000;}
+        .jine-bubble-wrap { display: flex; flex-direction: column; max-width: 65%; }
+        .player .jine-bubble-wrap { align-items: flex-end; }
+        .jine-bubble { padding: 8px 12px; border-radius: 12px; font-size: 14px; line-height: 1.4; background: #fff; border: 2px solid #2f3640; box-shadow: 2px 2px 0px #2f3640; position: relative; word-wrap: break-word;}
+        .player .jine-bubble { background: #78e08f; }
+        .jine-meta { font-size: 10px; color: #555; margin-top: 4px; display: flex; gap: 5px; }
+        @keyframes slideIn { from { opacity: 0; transform: translateY(15px); } to { opacity: 1; transform: translateY(0); } }
+
+        /* 2. Task Manager */
+        #win-stats { width: 320px; left: 850px; top: 40px; }
+        .stat-banner { background: #000; color: #00ff00; padding: 10px; text-align: center; font-size: 18px; font-family: 'Courier New', monospace; border: inset 2px #fff; margin-bottom: 10px; }
+        .fan-count { font-size: 32px; color: #0984e3; text-align: center; font-weight: bold; text-shadow: 1px 1px 0 #fff; margin: 10px 0;}
+        .progress-box { margin-bottom: 8px; }
+        .progress-label { display: flex; justify-content: space-between; font-size: 12px; font-weight: bold; margin-bottom: 2px; }
+        .progress-track { width: 100%; height: 18px; border: inset 2px #fff; background: #2d3436; position: relative; }
+        .progress-fill { height: 100%; transition: width 0.4s ease-out, background-color 0.3s; }
+        .limit-line { position: absolute; left: 80%; top: 0; width: 2px; height: 100%; background: red; z-index: 2; } /* 80% 警戒线 */
+
+        /* 3. Webcam */
+        #win-cam { width: 400px; height: 350px; left: 420px; top: 40px; }
+        .cam-feed { background: #1e272e; flex-grow: 1; border: inset 2px #fff; position: relative; display: flex; align-items: center; justify-content: center; overflow: hidden;}
+        .cam-rec { position: absolute; top: 10px; left: 10px; color: #ff4757; font-weight: bold; font-size: 16px; text-shadow: 0 0 5px red; animation: blink 1s infinite; display: none; }
+        .cam-sprite { font-size: 140px; transition: all 0.3s; user-select: none; filter: drop-shadow(0px 0px 10px rgba(255,255,255,0.3)); }
+        .cam-sprite.streaming { font-size: 180px; animation: float 2s infinite ease-in-out; filter: drop-shadow(0px 0px 20px #ff9eb1); }
+
+        /* 4. Actions */
+        #win-actions { width: 400px; left: 420px; top: 410px; }
+        .action-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; padding: 5px; }
+        .btn-action { height: 80px; display: flex; flex-direction: column; align-items: center; justify-content: center; font-size: 13px; font-weight: bold; font-family: 'DotGothic16'; border: outset 2px #fff; background: #dfe6e9; cursor: pointer; transition: all 0.1s;}
+        .btn-action:active:not([disabled]) { border: inset 2px #fff; background: #b2bec3; transform: scale(0.98); }
+        .btn-action[disabled] { filter: grayscale(100%); opacity: 0.5; cursor: not-allowed; }
+        .btn-icon { font-size: 32px; margin-bottom: 5px; }
+
+        /* =========================================
+           OS 过场与覆盖层
+           ========================================= */
+        #bios-boot { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: #000; color: #ccc; font-family: monospace; z-index: 10000; padding: 20px; font-size: 16px; box-sizing: border-box; }
+        #day-transition { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: #000; color: #fff; z-index: 9999; display: flex; align-items: center; justify-content: center; font-size: 48px; font-weight: bold; letter-spacing: 5px; opacity: 0; pointer-events: none; transition: opacity 1s; }
+        
+        #taskbar { position: absolute; bottom: 0; width: 100%; height: 35px; background: #c0c0c0; border-top: 2px solid #fff; display: flex; align-items: center; justify-content: space-between; padding: 0 4px; box-sizing: border-box; z-index: 9990; }
+    </style>
+</head>
+<body>
+
+<div class="desktop-bg"></div>
+<div class="crt-overlay"></div>
+
+<div id="bios-boot">
+    <div>WIND0WS 95 Memory Test: 640K OK</div>
+    <div id="bios-log"></div>
+    <div class="blink" id="bios-cursor">_</div>
+</div>
+
+<div id="day-transition">DAY <span id="trans-day">1</span></div>
+
+<div class="icon-grid">
+    <div class="desktop-icon" onclick="App.openWindow('win-jine', this)">
+        <div style="background:none; border:none; font-size:48px;">💬</div><span>JINE</span>
+    </div>
+    <div class="desktop-icon" onclick="App.openWindow('win-cam', this)">
+        <div style="background:none; border:none; font-size:48px;">📹</div><span>OBS.exe</span>
+    </div>
+</div>
+
+<div class="window" id="win-jine">
+    <div class="title-bar"><div class="title-bar-text">JINE</div></div>
+    <div class="window-body">
+        <div class="jine-container">
+            <div class="jine-header"><span>🎀 糖糖</span><span id="jine-typing" style="color:#e84118; display:none;">正在输入...</span></div>
+            <div class="jine-chat" id="jine-box"></div>
+        </div>
+    </div>
+</div>
+
+<div class="window" id="win-stats">
+    <div class="title-bar"><div class="title-bar-text">任务管理器</div></div>
+    <div class="window-body" style="padding: 10px;">
+        <div class="stat-banner" id="ui-time">DAY 1 - 🌞 昼</div>
+        <div style="text-align: center; font-weight: bold;">Followers</div>
+        <div class="fan-count" id="ui-fans">0</div>
+        
+        <div class="progress-box">
+            <div class="progress-label"><span>压力 Stress</span><span id="ui-stress-val">10</span></div>
+            <div class="progress-track"><div class="limit-line"></div><div class="progress-fill" id="ui-stress" style="background: #00b894; width: 10%;"></div></div>
+        </div>
+        <div class="progress-box">
+            <div class="progress-label"><span>好感 Affection</span><span id="ui-aff-val">50</span></div>
+            <div class="progress-track"><div class="progress-fill" id="ui-aff" style="background: #fd79a8; width: 50%;"></div></div>
+        </div>
+        <div class="progress-box">
+            <div class="progress-label"><span>阴暗 Darkness</span><span id="ui-dark-val">20</span></div>
+            <div class="progress-track"><div class="progress-fill" id="ui-dark" style="background: #6c5ce7; width: 20%;"></div></div>
+        </div>
+    </div>
+</div>
+
+<div class="window" id="win-cam">
+    <div class="title-bar"><div class="title-bar-text">WebCam</div></div>
+    <div class="window-body">
+        <div class="cam-feed" id="cam-bg">
+            <div class="cam-rec" id="cam-rec">● REC</div>
+            <div class="cam-sprite" id="sprite-ame">👧🏻</div>
+        </div>
+    </div>
+</div>
+
+<div class="window" id="win-actions">
+    <div class="title-bar"><div class="title-bar-text">Actions.exe</div></div>
+    <div class="window-body">
+        <div class="action-grid">
+            <button class="btn-action" onclick="Game.doAction('internet')"><div class="btn-icon">🌐</div>网上冲浪</button>
+            <button class="btn-action" onclick="Game.doAction('play')"><div class="btn-icon">🎮</div>打游戏</button>
+            <button class="btn-action" onclick="Game.doAction('meds')"><div class="btn-icon">💊</div>吃药</button>
+            <button class="btn-action" onclick="Game.doAction('out')"><div class="btn-icon">🏥</div>出门散心</button>
+            <button class="btn-action" onclick="Game.doAction('sleep')"><div class="btn-icon">🛏️</div>睡觉到明天</button>
+            <button class="btn-action" id="btn-stream" onclick="Game.doAction('stream')" disabled style="background:#ff7675; color:white; border-color:#d63031;"><div class="btn-icon">📺</div>开始直播</button>
+        </div>
+    </div>
+</div>
+
+<div id="taskbar">
+    <button style="font-weight:bold; font-family:'SimSun';">⊞ 开始</button>
+    <div style="border:inset 2px #fff; padding: 2px 8px; font-size: 12px; background:#c0c0c0;" id="sys-time">00:00</div>
+</div>
+
+<script>
+/**
+ * ==========================================
+ * ULTIMATE ENGINE - AUDIO, STATE, OS
+ * ==========================================
+ */
+
+// 1. Web Audio API 音效引擎 (纯代码合成音效)
+const AudioEngine = {
+    ctx: new (window.AudioContext || window.webkitAudioContext)(),
+    playTone: function(freq, type, duration, vol=0.1) {
+        if(this.ctx.state === 'suspended') this.ctx.resume();
+        const osc = this
