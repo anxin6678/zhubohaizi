@@ -1,0 +1,175 @@
+/**
+ * ==============================================================
+ * 主播女孩重度依赖 - 最强底层架构 (Pro-Level Game Engine)
+ * ==============================================================
+ * 采用 Proxy 实现数据响应式，采用异步队列处理 JINE 消息与事件触发
+ */
+
+class NeedyEngine {
+    constructor() {
+        // 1. 响应式状态管理 (Proxy)
+        // 只要数值发生变化，自动触发 UI 更新和结局检定，绝对不会出现数据不同步
+        this.state = new Proxy({
+            day: 1,
+            time: 'day', // 'day' | 'dusk' | 'night'
+            stats: { stress: 10, affection: 50, darkness: 20, fans: 0 },
+            isGameOver: false,
+            currentEvent: null
+        }, {
+            set: (target, property, value) => {
+                target[property] = value;
+                this.onStateChange(property, value);
+                return true;
+            }
+        });
+
+        this.statsProxy = new Proxy(this.state.stats, {
+            set: (target, property, value) => {
+                // 严格的数值边界钳制
+                const max = property === 'fans' ? Infinity : (property === 'stress' ? 120 : 100);
+                target[property] = Math.max(0, Math.min(value, max));
+                this.updateUI();
+                this.checkGlobalEvents();
+                return true;
+            }
+        });
+
+        // 2. 剧情/事件总线
+        this.eventDatabase = this.loadEvents();
+        
+        // 3. 消息队列机制
+        this.messageQueue = [];
+        this.isProcessingMessages = false;
+    }
+
+    // --- 核心驱动机制 ---
+
+    onStateChange(prop, val) {
+        if (prop === 'isGameOver' && val === true) {
+            this.triggerSystemCrash();
+        }
+    }
+
+    updateUI() {
+        // 在这里对接你的 HTML DOM 更新
+        console.log(`[UI更新] 压力: ${this.statsProxy.stress} | 阴暗: ${this.statsProxy.darkness} | 粉丝: ${this.statsProxy.fans}`);
+        // document.getElementById('stress-bar').value = this.statsProxy.stress;
+    }
+
+    // --- 事件与检定系统 ---
+
+    checkGlobalEvents() {
+        if (this.state.isGameOver) return;
+
+        // 优先级最高的结局检定
+        if (this.statsProxy.stress >= 100) {
+            this.triggerEnding("STRESS_BREAKDOWN");
+            return;
+        }
+        if (this.statsProxy.darkness >= 100) {
+            this.triggerEnding("DARKNESS_CONSUMED");
+            return;
+        }
+
+        // 特殊里程碑检定 (例如粉丝破万)
+        if (this.statsProxy.fans >= 10000 && !this.state.milestone10k) {
+            this.state.milestone10k = true;
+            this.queueJineMessage("阿P！！！我们粉丝破万了！！！", "ame", 1000);
+            this.queueJineMessage("我要飞上天了！", "ame", 500);
+        }
+    }
+
+    triggerEnding(endingCode) {
+        this.state.isGameOver = true;
+        this.messageQueue = []; // 清空之前的消息队列
+        
+        if (endingCode === "STRESS_BREAKDOWN") {
+            this.queueJineMessage("阿P，我的头要裂开了。", "ame", 1000);
+            this.queueJineMessage("一切都毁了。", "ame", 2000);
+            this.queueJineMessage("【系统提示】糖糖切断了网络连接。", "system", 3000);
+        }
+    }
+
+    // --- 高级 JINE 消息队列 (支持打字机延迟与排队) ---
+
+    queueJineMessage(text, sender, delayMs = 1000) {
+        this.messageQueue.push({ text, sender, delayMs });
+        if (!this.isProcessingMessages) {
+            this.processMessageQueue();
+        }
+    }
+
+    async processMessageQueue() {
+        this.isProcessingMessages = true;
+        
+        while (this.messageQueue.length > 0) {
+            const msg = this.messageQueue.shift();
+            
+            // 模拟“正在输入...”
+            if (msg.sender === 'ame') {
+                console.log("糖糖 正在输入...");
+                // document.getElementById('typing-indicator').style.display = 'block';
+            }
+
+            // 等待指定的延迟
+            await new Promise(resolve => setTimeout(resolve, msg.delayMs));
+
+            // document.getElementById('typing-indicator').style.display = 'none';
+            console.log(`[JINE] ${msg.sender === 'ame' ? '🎀 糖糖' : '⚙️ 系统'}: ${msg.text}`);
+            // 在这里将气泡推入 DOM
+        }
+        
+        this.isProcessingMessages = false;
+    }
+
+    // --- 玩家行动接口 ---
+
+    executeAction(actionType) {
+        if (this.state.isGameOver) return;
+
+        console.log(`>>> 执行动作: ${actionType} <<<`);
+        
+        // 使用 Proxy，直接修改数值即可自动触发各种联动
+        switch(actionType) {
+            case 'stream':
+                this.statsProxy.stress += 20;
+                this.statsProxy.fans += Math.floor(Math.random() * 500) + 100;
+                this.queueJineMessage("直播好累...", "ame", 1500);
+                break;
+            case 'play':
+                this.statsProxy.stress -= 15;
+                this.statsProxy.affection += 10;
+                this.queueJineMessage("跟你打游戏最开心了！", "ame", 1000);
+                break;
+        }
+        
+        // 时间推进逻辑可在此添加
+    }
+
+    triggerSystemCrash() {
+        console.warn("CRITICAL ERROR: GAME OVER");
+        // 触发 HTML 层的故障滤镜 (Glitch CSS)
+    }
+
+    loadEvents() {
+        // 现实中，这里会通过 fetch('events.json') 读取几十万字的剧本配置表
+        return {
+            "day_1": { text: "第一天开始了", conditions: {} }
+        };
+    }
+}
+
+// 实例化引擎
+const game = new NeedyEngine();
+
+// 测试流程
+setTimeout(() => game.executeAction('play'), 1000);
+setTimeout(() => game.executeAction('stream'), 4000);
+// 连续直播导致压力过载触发结局
+setTimeout(() => {
+    game.executeAction('stream');
+    game.executeAction('stream');
+    game.executeAction('stream');
+    game.executeAction('stream');
+    game.executeAction('stream'); 
+}, 8000);
